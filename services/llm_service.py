@@ -156,6 +156,55 @@ def _safe_exec(code, df):
         return {"error": traceback.format_exc().split('\n')[-2]}
 
 
+def generate_narrative(df, insights, ollama_url, model):
+    """Generate a plain-English narrative summary of the dataset."""
+    desc = df.describe(include='all').to_string()
+    shape = f"{len(df)} rows x {len(df.columns)} columns"
+    cols = ", ".join(df.columns.tolist()[:30])
+    insight_lines = "\n".join(
+        f"- {i['title']}: {i['detail']}" for i in insights[:10]
+    )
+
+    prompt = f"""You are a data analyst writing a brief, insightful summary of a dataset.
+
+Dataset: {shape}
+Columns: {cols}
+
+Statistics:
+{desc}
+
+Key findings:
+{insight_lines}
+
+Write a 3-5 paragraph narrative summary that:
+1. Describes what this dataset appears to contain and its structure
+2. Highlights the most interesting patterns, correlations, and anomalies
+3. Notes any data quality issues (missing values, outliers, duplicates)
+4. Suggests what questions this data could answer
+
+Write in clear, professional English. Be specific with numbers. No markdown headers — just flowing paragraphs."""
+
+    try:
+        response = requests.post(
+            f"{ollama_url}/api/chat",
+            json={
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": False,
+                "think": False,
+                "options": {"temperature": 0.3, "num_predict": 1024},
+            },
+            timeout=120,
+        )
+        response.raise_for_status()
+        content = response.json().get("message", {}).get("content", "")
+        return {"narrative": content.strip()}
+    except requests.exceptions.ConnectionError:
+        return {"narrative": None, "error": "Ollama not available"}
+    except Exception as e:
+        return {"narrative": None, "error": str(e)}
+
+
 def check_ollama_health(ollama_url):
     """Check if Ollama is reachable."""
     try:

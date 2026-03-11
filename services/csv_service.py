@@ -287,3 +287,73 @@ def get_summary_stats(df):
             })
         stats[col] = col_stats
     return stats
+
+
+# ---------------------------------------------------------------------------
+# PII Detection and Redaction
+# ---------------------------------------------------------------------------
+
+import re as _re
+
+_PII_PATTERNS = {
+    'email': _re.compile(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'),
+    'phone': _re.compile(r'(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}'),
+    'ssn': _re.compile(r'\b\d{3}-\d{2}-\d{4}\b'),
+    'credit_card': _re.compile(r'\b(?:\d[ -]*?){13,19}\b'),
+    'ip_address': _re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b'),
+}
+
+_REDACT_MAP = {
+    'email': '***@***.***',
+    'phone': '***-***-****',
+    'ssn': '***-**-****',
+    'credit_card': '****-****-****-****',
+    'ip_address': '***.***.***.***',
+}
+
+
+def detect_pii(df, sample_size=200):
+    """Scan columns for potential PII. Returns a dict of column → list of PII types found."""
+    results = {}
+    sample = df.head(sample_size)
+    for col in sample.columns:
+        if not pd.api.types.is_string_dtype(sample[col]):
+            continue
+        values = sample[col].dropna().astype(str)
+        if values.empty:
+            continue
+        found = []
+        for pii_type, pattern in _PII_PATTERNS.items():
+            matches = values.apply(lambda v: bool(pattern.search(v)))
+            match_pct = matches.mean()
+            if match_pct > 0.1:  # At least 10% of sampled values match
+                found.append({
+                    'type': pii_type,
+                    'match_pct': round(match_pct * 100, 1),
+                    'sample_match': str(values[matches].iloc[0]) if matches.any() else None,
+                })
+        if found:
+            results[col] = found
+    return results
+
+
+def redact_pii(df, columns_to_redact=None):
+    """Redact PII in specified columns. If columns_to_redact is None, auto-detect and redact all."""
+    df = df.copy()
+    if columns_to_redact is None:
+        pii_info = detect_pii(df)
+        columns_to_redact = {}
+        for col, pii_types in pii_info.items():
+            columns_to_redact[col] = [p['type'] for p in pii_types]
+
+    for col, pii_types in columns_to_redact.items():
+        if col not in df.columns:
+            continue
+        for pii_type in pii_types:
+            pattern = _PII_PATTERNS.get(pii_type)
+            replacement = _REDACT_MAP.get(pii_type, '***')
+            if pattern:
+                df[col] = df[col].astype(str).apply(
+                    lambda v: pattern.sub(replacement, v) if pd.notna(v) else v
+                )
+    return df

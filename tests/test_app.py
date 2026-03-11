@@ -138,6 +138,75 @@ class TestAPIColumnInfo:
         assert age_col['col_type'] == 'numeric'
 
 
+class TestAPIPII:
+    def test_pii_detection_no_pii(self, uploaded_client):
+        resp = uploaded_client.get('/api/pii')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        # Sample data has no PII (names but not emails/SSNs)
+        assert isinstance(data['pii'], dict)
+
+    def test_pii_redact_endpoint(self, uploaded_client):
+        resp = uploaded_client.post('/api/pii/redact',
+            json={}, content_type='application/json')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert 'columns' in data
+        assert 'rows' in data
+
+
+class TestAPIBuilder:
+    def test_builder_data(self, uploaded_client):
+        resp = uploaded_client.post('/api/builder/data',
+            json={'x': 'department', 'y': 'salary', 'agg': 'mean'},
+            content_type='application/json')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert 'x' in data
+        assert 'y' in data
+        assert data['aggregated'] is True
+
+    def test_builder_data_no_agg(self, uploaded_client):
+        resp = uploaded_client.post('/api/builder/data',
+            json={'x': 'age', 'y': 'salary', 'agg': 'none'},
+            content_type='application/json')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert len(data['x']) == 10  # All 10 rows
+
+    def test_builder_no_columns(self, uploaded_client):
+        resp = uploaded_client.post('/api/builder/data',
+            json={}, content_type='application/json')
+        assert resp.status_code == 400
+
+
+class TestPIIService:
+    def test_detect_pii_with_emails(self, tmp_path):
+        from services.csv_service import parse_csv, detect_pii
+        csv = tmp_path / 'pii.csv'
+        csv.write_text(
+            'name,email,phone\n'
+            'Alice,alice@example.com,555-123-4567\n'
+            'Bob,bob@test.org,555-987-6543\n'
+        )
+        df = parse_csv(str(csv))
+        pii = detect_pii(df)
+        assert 'email' in pii
+        assert any(p['type'] == 'email' for p in pii['email'])
+
+    def test_redact_pii(self, tmp_path):
+        from services.csv_service import parse_csv, redact_pii
+        csv = tmp_path / 'pii.csv'
+        csv.write_text(
+            'name,email\n'
+            'Alice,alice@example.com\n'
+            'Bob,bob@test.org\n'
+        )
+        df = parse_csv(str(csv))
+        redacted = redact_pii(df)
+        assert '***@***.***' in redacted['email'].iloc[0]
+
+
 class TestCSVService:
     def test_generate_insights(self, sample_csv):
         from services.csv_service import parse_csv, generate_insights

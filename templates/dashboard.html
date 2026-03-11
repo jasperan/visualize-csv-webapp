@@ -28,6 +28,7 @@
                 <button class="tab-btn px-5 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" data-tab="table">Data Table</button>
                 <button class="tab-btn px-5 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" data-tab="charts">Charts</button>
                 <button class="tab-btn px-5 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" data-tab="stats">Statistics</button>
+                <button class="tab-btn px-5 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" data-tab="builder">Chart Builder</button>
                 <div class="flex-1"></div>
                 <button id="sidebar-toggle" class="lg:hidden px-3 text-gray-500 hover:text-gray-700">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
@@ -43,6 +44,20 @@
                     <div class="col-span-full text-center py-8 text-gray-400">
                         <svg class="animate-spin w-8 h-8 mx-auto mb-2 text-brand-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
                         Analyzing your data...
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Narrative (below insight cards) -->
+            <div id="narrative-section" class="mt-6 hidden">
+                <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+                    <div class="flex items-center gap-2 mb-3">
+                        <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <h3 class="font-semibold text-sm">AI Data Narrative</h3>
+                        <button id="generate-narrative" class="ml-auto text-xs bg-brand-600 text-white px-3 py-1 rounded-lg hover:bg-brand-700">Generate</button>
+                    </div>
+                    <div id="narrative-content" class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line">
+                        Click "Generate" to create an AI-written summary of your dataset.
                     </div>
                 </div>
             </div>
@@ -72,6 +87,80 @@
             <div id="panel-stats" class="tab-panel hidden">
                 <div id="stats-container" class="overflow-x-auto">
                     <div class="text-center py-8 text-gray-400">Loading statistics...</div>
+                </div>
+            </div>
+
+            <!-- Chart Builder panel -->
+            <div id="panel-builder" class="tab-panel hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <!-- Controls -->
+                    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 space-y-4">
+                        <h3 class="font-semibold text-sm">Build a Chart</h3>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Chart Type</label>
+                            <select id="builder-type" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm">
+                                <option value="bar">Bar Chart</option>
+                                <option value="scatter">Scatter Plot</option>
+                                <option value="histogram">Histogram</option>
+                                <option value="line">Line Chart</option>
+                                <option value="box">Box Plot</option>
+                                <option value="pie">Pie Chart</option>
+                                <option value="violin">Violin Plot</option>
+                                <option value="heatmap">Heatmap</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">X Axis / Category</label>
+                            <select id="builder-x" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm">
+                                <option value="">— Select column —</option>
+                            </select>
+                        </div>
+
+                        <div id="builder-y-group">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Y Axis / Value</label>
+                            <select id="builder-y" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm">
+                                <option value="">— Select column —</option>
+                            </select>
+                        </div>
+
+                        <div id="builder-color-group">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Color By (optional)</label>
+                            <select id="builder-color" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm">
+                                <option value="">— None —</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Aggregation (for bar/line)</label>
+                            <select id="builder-agg" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm">
+                                <option value="none">None (raw values)</option>
+                                <option value="mean">Mean</option>
+                                <option value="sum">Sum</option>
+                                <option value="count">Count</option>
+                                <option value="median">Median</option>
+                                <option value="min">Min</option>
+                                <option value="max">Max</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Title</label>
+                            <input id="builder-title" type="text" placeholder="Auto-generated" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm">
+                        </div>
+
+                        <button id="builder-render" class="w-full bg-brand-600 text-white px-4 py-2 rounded-lg hover:bg-brand-700 transition-colors text-sm font-medium">
+                            Render Chart
+                        </button>
+                    </div>
+
+                    <!-- Preview -->
+                    <div class="lg:col-span-2">
+                        <div id="builder-preview" class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 min-h-[450px] flex items-center justify-center text-gray-400 text-sm">
+                            Select columns and click "Render Chart" to preview.
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -120,5 +209,6 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
 <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+<script src="{{ url_for('static', filename='js/builder.js') }}"></script>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 {% endblock %}

@@ -175,12 +175,103 @@ def api_charts():
     return jsonify(charts=charts)
 
 
+@app.route('/api/narrative')
+def api_narrative():
+    """Generate an AI-written narrative summary of the dataset."""
+    df = load_dataframe(max_rows=app.config['MAX_PREVIEW_ROWS'])
+    if df is None:
+        return jsonify(error='No file uploaded'), 404
+    insights = csv_service.generate_insights(df)
+    result = llm_service.generate_narrative(
+        df=df,
+        insights=insights,
+        ollama_url=app.config['OLLAMA_BASE_URL'],
+        model=app.config['OLLAMA_MODEL'],
+    )
+    return jsonify(result)
+
+
+@app.route('/api/pii')
+def api_pii():
+    """Detect PII in the uploaded dataset."""
+    df = load_dataframe(max_rows=app.config['MAX_PREVIEW_ROWS'])
+    if df is None:
+        return jsonify(error='No file uploaded'), 404
+    pii = csv_service.detect_pii(df)
+    return jsonify(pii=pii, has_pii=len(pii) > 0)
+
+
+@app.route('/api/pii/redact', methods=['POST'])
+def api_pii_redact():
+    """Return data with PII redacted."""
+    df = load_dataframe(max_rows=app.config['MAX_PREVIEW_ROWS'])
+    if df is None:
+        return jsonify(error='No file uploaded'), 404
+
+    data = request.get_json() or {}
+    columns = data.get('columns')  # None means auto-detect all
+    redacted = csv_service.redact_pii(df, columns_to_redact=columns)
+
+    page = request.args.get('page', 1, type=int)
+    per_page = max(1, min(request.args.get('per_page', 50, type=int), 200))
+    start = (page - 1) * per_page
+    subset = redacted.iloc[start:start + per_page]
+
+    return jsonify(
+        columns=redacted.columns.tolist(),
+        rows=subset.where(pd.notna(subset), None).values.tolist(),
+        total_rows=len(redacted),
+        redacted_columns=list(columns.keys()) if columns else list(csv_service.detect_pii(df).keys()),
+    )
+
+
 @app.route('/api/stats')
 def api_stats():
     df = load_dataframe(max_rows=app.config['MAX_PREVIEW_ROWS'])
     if df is None:
         return jsonify(error='No file uploaded'), 404
     return jsonify(stats=csv_service.get_summary_stats(df))
+
+
+@app.route('/api/builder/data', methods=['POST'])
+def api_builder_data():
+    """Return column data for the chart builder."""
+    df = load_dataframe(max_rows=app.config['MAX_PREVIEW_ROWS'])
+    if df is None:
+        return jsonify(error='No file uploaded'), 404
+
+    spec = request.get_json() or {}
+    x_col = spec.get('x')
+    y_col = spec.get('y')
+    color_col = spec.get('color')
+    agg = spec.get('agg', 'none')
+
+    result = {'x_col': x_col, 'y_col': y_col}
+
+    needed = [c for c in [x_col, y_col, color_col] if c and c in df.columns]
+    if not needed:
+        return jsonify(error='No valid columns selected'), 400
+
+    subset = df[needed].dropna().head(5000)
+
+    if agg != 'none' and x_col and y_col and x_col in df.columns and y_col in df.columns:
+        grouped = df.groupby(x_col)[y_col]
+        agg_map = {'mean': 'mean', 'sum': 'sum', 'count': 'count',
+                    'median': 'median', 'min': 'min', 'max': 'max'}
+        if agg in agg_map:
+            agg_result = getattr(grouped, agg_map[agg])().sort_values(ascending=False).head(50)
+            result['x'] = agg_result.index.astype(str).tolist()
+            result['y'] = agg_result.values.tolist()
+            result['aggregated'] = True
+    else:
+        if x_col and x_col in subset.columns:
+            result['x'] = subset[x_col].astype(str).tolist() if not pd.api.types.is_numeric_dtype(subset[x_col]) else subset[x_col].tolist()
+        if y_col and y_col in subset.columns:
+            result['y'] = subset[y_col].tolist()
+        if color_col and color_col in subset.columns:
+            result['color'] = subset[color_col].astype(str).tolist()
+
+    return jsonify(result)
 
 
 @app.route('/api/chat', methods=['POST'])

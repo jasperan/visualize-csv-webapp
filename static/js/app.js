@@ -135,6 +135,10 @@
             if (data.error) { container.innerHTML = `<p class="text-red-500">${data.error}</p>`; return; }
 
             container.innerHTML = '';
+
+            // Also check for PII in parallel
+            loadPII(container);
+
             const iconMap = {
                 'table': '<path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/>',
                 'alert-triangle': '<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
@@ -170,6 +174,98 @@
             });
         } catch (err) {
             container.innerHTML = `<p class="text-red-500">Failed to load insights: ${err.message}</p>`;
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // AI Narrative
+    // -----------------------------------------------------------------------
+    function initNarrative() {
+        const section = document.getElementById('narrative-section');
+        const btn = document.getElementById('generate-narrative');
+        const content = document.getElementById('narrative-content');
+        if (!section || !btn) return;
+
+        section.classList.remove('hidden');
+
+        btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            btn.textContent = 'Generating...';
+            content.innerHTML = '<span class="flex items-center gap-2"><svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg> Analyzing your data with AI...</span>';
+            try {
+                const resp = await fetch('/api/narrative');
+                const data = await resp.json();
+                if (data.narrative) {
+                    content.textContent = data.narrative;
+                    btn.textContent = 'Regenerate';
+                } else {
+                    content.textContent = data.error || 'Could not generate narrative. Is Ollama running?';
+                    btn.textContent = 'Retry';
+                }
+            } catch (err) {
+                content.textContent = 'Error: ' + err.message;
+                btn.textContent = 'Retry';
+            }
+            btn.disabled = false;
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // PII Detection
+    // -----------------------------------------------------------------------
+    async function loadPII(insightsContainer) {
+        try {
+            const resp = await fetch('/api/pii');
+            const data = await resp.json();
+            if (!data.has_pii) return;
+
+            const cols = Object.entries(data.pii);
+            const card = document.createElement('div');
+            card.className = 'insight-card rounded-xl border p-4 border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950 col-span-full';
+            let details = cols.map(([col, types]) =>
+                `<strong>${escapeHtml(col)}</strong>: ${types.map(t => t.type + ' (' + t.match_pct + '%)').join(', ')}`
+            ).join('<br>');
+            card.innerHTML = `
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 shrink-0 mt-0.5 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M12 15v2m0 0v2m0-2h2m-2 0H10m12-4a10 10 0 11-20 0 10 10 0 0120 0z"/>
+                    </svg>
+                    <div class="flex-1">
+                        <p class="font-semibold text-sm text-red-700 dark:text-red-300">Potential PII Detected</p>
+                        <p class="text-xs text-red-600 dark:text-red-400 mt-1">${details}</p>
+                        <button class="mt-2 text-xs bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 pii-redact-btn">View Redacted Data</button>
+                    </div>
+                </div>
+            `;
+            // Insert at the top of insights
+            insightsContainer.insertBefore(card, insightsContainer.firstChild);
+
+            card.querySelector('.pii-redact-btn').addEventListener('click', async () => {
+                try {
+                    const r = await fetch('/api/pii/redact', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({}),
+                    });
+                    const rd = await r.json();
+                    // Switch to table tab and show redacted data
+                    document.querySelector('[data-tab="table"]')?.click();
+                    const tbody = document.getElementById('table-body');
+                    const thead = document.getElementById('table-head');
+                    thead.innerHTML = '<tr>' + rd.columns.map(c =>
+                        `<th class="px-3 py-2 font-medium whitespace-nowrap ${rd.redacted_columns.includes(c) ? 'text-red-600' : ''}">${escapeHtml(c)}${rd.redacted_columns.includes(c) ? ' (redacted)' : ''}</th>`
+                    ).join('') + '</tr>';
+                    tbody.innerHTML = rd.rows.map(r =>
+                        '<tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50">' +
+                        r.map(v => `<td class="px-3 py-2 whitespace-nowrap">${escapeHtml(v != null ? String(v) : '')}</td>`).join('') +
+                        '</tr>'
+                    ).join('');
+                } catch (err) {
+                    console.error('PII redact error:', err);
+                }
+            });
+        } catch (err) {
+            console.error('PII detection error:', err);
         }
     }
 
@@ -272,8 +368,10 @@
             loadStats(),
         ]);
 
-        // Init chat
+        // Init modules
         Chat.init();
+        initNarrative();
+        Builder.init(allColumns);
     }
 
     init();

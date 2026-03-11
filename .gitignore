@@ -35,3 +35,29 @@ Temporary Items
 # ignore AutoML generated HTML report (as they are sometimes huge, depending on the size of the original CSV file).
 ./staticFiles/uploads/ml_output.html
 
+# Uploads
+uploads/
+staticFiles/uploads/*.csv
+staticFiles/uploads/*.tsv
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Plans and generated docs
+docs/plans/
+task_plan.md
+findings.md
+progress.md
+dogfood-output/
+.playwright-mcp/

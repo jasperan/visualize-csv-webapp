@@ -47,6 +47,16 @@ def get_column_info(df):
 def generate_insights(df):
     """Auto-detect interesting patterns in the data."""
     insights = []
+
+    if len(df) == 0:
+        insights.append({
+            'type': 'overview', 'icon': 'table',
+            'title': 'Empty Dataset',
+            'detail': f'0 rows x {len(df.columns)} columns',
+            'severity': 'warning',
+        })
+        return insights
+
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
 
     # Dataset overview
@@ -244,7 +254,7 @@ def suggest_charts(df, column_info):
     # Correlation heatmap
     if len(numeric_cols) >= 3:
         cols = [c['name'] for c in numeric_cols[:12]]
-        corr = df[cols].corr()
+        corr = df[cols].corr().fillna(0)
         charts.append({
             'id': 'correlation_heatmap',
             'type': 'heatmap',

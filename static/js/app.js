@@ -63,12 +63,6 @@
             list.appendChild(label);
         });
 
-        document.getElementById('toggle-all-cols')?.addEventListener('click', () => {
-            const allChecked = visibleColumns.size === allColumns.length;
-            allColumns.forEach(c => allChecked ? visibleColumns.delete(c.name) : visibleColumns.add(c.name));
-            renderColumnList(allColumns);
-            loadTable(currentPage);
-        });
     }
 
     // -----------------------------------------------------------------------
@@ -77,7 +71,10 @@
     async function loadTable(page = 1) {
         currentPage = page;
         try {
-            const resp = await fetch(`/api/data?page=${page}&per_page=50`);
+            // Server-side sort
+            let url = `/api/data?page=${page}&per_page=50`;
+            if (sortCol) url += `&sort=${encodeURIComponent(sortCol)}&sort_asc=${sortAsc}`;
+            const resp = await fetch(url);
             const data = await resp.json();
             if (data.error) return;
 
@@ -97,22 +94,11 @@
                     const col = th.dataset.col;
                     if (sortCol === col) sortAsc = !sortAsc;
                     else { sortCol = col; sortAsc = true; }
-                    loadTable(currentPage);
+                    loadTable(1); // Reset to page 1 on sort
                 });
             });
 
-            // Sort rows client-side for current page
-            let rows = data.rows.map(r => colIndices.map(i => r[i]));
-            if (sortCol && cols.includes(sortCol)) {
-                const si = cols.indexOf(sortCol);
-                rows.sort((a, b) => {
-                    let va = a[si], vb = b[si];
-                    if (va == null) return 1;
-                    if (vb == null) return -1;
-                    if (typeof va === 'number' && typeof vb === 'number') return sortAsc ? va - vb : vb - va;
-                    return sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
-                });
-            }
+            const rows = data.rows.map(r => colIndices.map(i => r[i]));
 
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = rows.map(r =>
@@ -259,6 +245,14 @@
     // Init
     // -----------------------------------------------------------------------
     async function init() {
+        // Toggle-all columns — register once in init to avoid listener accumulation
+        document.getElementById('toggle-all-cols')?.addEventListener('click', () => {
+            const allChecked = visibleColumns.size === allColumns.length;
+            allColumns.forEach(c => allChecked ? visibleColumns.delete(c.name) : visibleColumns.add(c.name));
+            renderColumnList(allColumns);
+            loadTable(currentPage);
+        });
+
         // Load column info first
         try {
             const resp = await fetch('/api/column_info');

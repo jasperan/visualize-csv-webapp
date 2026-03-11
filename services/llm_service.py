@@ -116,15 +116,37 @@ def _extract_json(text):
 
 
 def _safe_exec(code, df):
-    """Execute Pandas code in a restricted namespace."""
+    """Execute Pandas code in a restricted namespace.
+
+    WARNING: This sandbox is NOT secure for multi-user or public deployments.
+    It uses a blocklist approach which can be bypassed by a determined attacker
+    or a sufficiently creative LLM. Only use in local/single-user contexts.
+    For production use, run code in a subprocess with seccomp/namespace isolation.
+    """
     import numpy as np
 
-    # Block dangerous operations
-    forbidden = ['import os', 'import sys', 'subprocess', 'eval(', 'exec(',
-                 '__import__', 'open(', 'shutil', 'pathlib']
-    for f in forbidden:
+    # Block dangerous patterns — strings and regex for whitespace-insensitive matching
+    forbidden_strings = [
+        'subprocess', 'shutil', 'pathlib', 'importlib',
+        '__import__', '__builtins__', '__globals__', '__subclasses__',
+        'getattr', 'setattr', 'delattr', 'globals', 'locals',
+        'breakpoint', 'compile',
+    ]
+    forbidden_patterns = [
+        r'import\s+os', r'import\s+sys', r'from\s+os', r'from\s+sys',
+        r'eval\s*\(', r'exec\s*\(', r'open\s*\(',  r'type\s*\(',
+        r'\.to_csv', r'\.to_excel', r'\.to_parquet', r'\.to_json\s*\(',
+        r'\.to_file', r'\.save\s*\(', r'\.write\s*\(',
+        r'read_csv\s*\(', r'read_excel', r'read_parquet', r'read_json\s*\(',
+        r'read_sql', r'read_html', r'read_fwf',
+    ]
+
+    for f in forbidden_strings:
         if f in code:
             return {"error": f"Blocked: code contains '{f}'"}
+    for pattern in forbidden_patterns:
+        if re.search(pattern, code):
+            return {"error": f"Blocked: code matches forbidden pattern"}
 
     namespace = {"df": df.copy(), "pd": pd, "np": np}
     try:

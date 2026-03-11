@@ -60,7 +60,26 @@ class TestAPIData:
         assert data['total_rows'] == 10
         assert data['total_pages'] == 4
 
+    def test_data_server_side_sort(self, uploaded_client):
+        resp = uploaded_client.get('/api/data?sort=age&sort_asc=true&per_page=3')
+        data = resp.get_json()
+        ages = [r[1] for r in data['rows']]  # age is column index 1
+        assert ages == sorted(ages)
+
+    def test_data_per_page_lower_bound(self, uploaded_client):
+        resp = uploaded_client.get('/api/data?per_page=0')
+        data = resp.get_json()
+        assert data['per_page'] == 1  # clamped to 1
+
     def test_data_404_without_upload(self, client):
+        resp = client.get('/api/data')
+        assert resp.status_code == 404
+
+
+class TestPathTraversal:
+    def test_session_path_traversal_blocked(self, client):
+        with client.session_transaction() as sess:
+            sess['upload_path'] = '/etc/passwd'
         resp = client.get('/api/data')
         assert resp.status_code == 404
 

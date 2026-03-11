@@ -1,10 +1,11 @@
+import glob
+import logging
 import os
 import uuid
-import json
 
 import pandas as pd
 from flask import (Flask, request, render_template, session,
-                   redirect, url_for, jsonify, abort)
+                   redirect, url_for, jsonify)
 from werkzeug.utils import secure_filename
 
 from config import Config
@@ -12,8 +13,15 @@ from services import csv_service, llm_service
 
 app = Flask(__name__)
 app.config.from_object(Config)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+if app.config['SECRET_KEY'] != os.environ.get('SECRET_KEY'):
+    logging.warning(
+        'SECRET_KEY not set via environment variable — using random fallback. '
+        'Sessions will not survive restarts. Set SECRET_KEY for production.'
+    )
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -28,6 +36,11 @@ def get_upload_path():
     path = session.get('upload_path')
     if not path or not os.path.isfile(path):
         return None
+    # Validate the path is inside UPLOAD_FOLDER to prevent traversal
+    real_path = os.path.realpath(path)
+    real_folder = os.path.realpath(app.config['UPLOAD_FOLDER'])
+    if not real_path.startswith(real_folder + os.sep):
+        return None
     return path
 
 
@@ -37,6 +50,16 @@ def load_dataframe(max_rows=None):
     if not path:
         return None
     return csv_service.parse_csv(path, nrows=max_rows)
+
+
+def _cleanup_old_uploads(keep_path=None):
+    """Remove uploads older than the current one for this session."""
+    old_path = session.get('upload_path')
+    if old_path and old_path != keep_path and os.path.isfile(old_path):
+        try:
+            os.remove(old_path)
+        except OSError:
+            pass
 
 
 # ---------------------------------------------------------------------------
@@ -62,6 +85,8 @@ def upload():
     unique_name = f"{uuid.uuid4().hex[:8]}_{safe_name}"
     save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
     f.save(save_path)
+
+    _cleanup_old_uploads(keep_path=save_path)
 
     session['upload_path'] = save_path
     session['upload_name'] = safe_name
@@ -95,14 +120,20 @@ def dashboard():
 
 @app.route('/api/data')
 def api_data():
-    """Return paginated table data."""
+    """Return paginated, optionally sorted table data."""
     df = load_dataframe(max_rows=app.config['MAX_PREVIEW_ROWS'])
     if df is None:
         return jsonify(error='No file uploaded'), 404
 
+    # Sort server-side if requested
+    sort_col = request.args.get('sort')
+    sort_asc = request.args.get('sort_asc', 'true').lower() == 'true'
+    if sort_col and sort_col in df.columns:
+        df = df.sort_values(sort_col, ascending=sort_asc, na_position='last')
+
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
-    per_page = min(per_page, 200)
+    per_page = max(1, min(per_page, 200))
 
     start = (page - 1) * per_page
     end = start + per_page

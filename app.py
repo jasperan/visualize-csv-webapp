@@ -11,8 +11,14 @@ from flask import (Flask, request, render_template, session,
 from werkzeug.utils import secure_filename
 
 from config import Config
-from services import csv_service, llm_service
+from services import csv_service, llm_service, vector_service, collab_service, plugin_service
 from services.async_analysis import start_analysis, get_all_status, clear_session
+
+try:
+    from flask_socketio import SocketIO, emit, join_room as sio_join, leave_room as sio_leave
+    HAS_SOCKETIO = True
+except ImportError:
+    HAS_SOCKETIO = False
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -20,6 +26,9 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['DASHBOARD_FOLDER'], exist_ok=True)
+
+# Discover plugins
+plugin_service.discover_all(app.config)
 
 if app.config['SECRET_KEY'] != os.environ.get('SECRET_KEY'):
     logging.warning(
@@ -99,6 +108,13 @@ def upload():
     df = csv_service.parse_csv(save_path, nrows=app.config['MAX_PREVIEW_ROWS'])
     col_info = csv_service.get_column_info(df)
 
+    # Store in vector memory (non-blocking, best-effort)
+    try:
+        stats = csv_service.get_summary_stats(df)
+        vector_service.store_dataset(app.config, safe_name, df, col_info, stats)
+    except Exception:
+        pass  # Vector search is optional
+
     return jsonify(
         success=True,
         filename=safe_name,
@@ -166,7 +182,13 @@ def api_insights():
     df = load_dataframe(max_rows=app.config['MAX_PREVIEW_ROWS'])
     if df is None:
         return jsonify(error='No file uploaded'), 404
-    return jsonify(insights=csv_service.generate_insights(df))
+    insights = csv_service.generate_insights(df)
+    # Run plugin insight hooks
+    for hook_result in plugin_service.run_hooks('insight_generator', df):
+        extra = hook_result.get('result', [])
+        if isinstance(extra, list):
+            insights.extend(extra)
+    return jsonify(insights=insights)
 
 
 @app.route('/api/charts')
@@ -176,6 +198,11 @@ def api_charts():
         return jsonify(error='No file uploaded'), 404
     col_info = csv_service.get_column_info(df)
     charts = csv_service.suggest_charts(df, col_info)
+    # Run plugin chart hooks
+    for hook_result in plugin_service.run_hooks('chart_generator', df, col_info):
+        extra = hook_result.get('result', [])
+        if isinstance(extra, list):
+            charts.extend(extra)
     return jsonify(charts=charts)
 
 
@@ -457,8 +484,190 @@ def api_dashboards_delete(dash_id):
 
 
 # ---------------------------------------------------------------------------
+# Vector Search API (Oracle AI — optional)
+# ---------------------------------------------------------------------------
+
+@app.route('/api/memory/status')
+def api_memory_status():
+    """Check if Oracle Vector Search is available."""
+    available = vector_service.is_available(app.config)
+    return jsonify(available=available)
+
+
+@app.route('/api/memory/search')
+def api_memory_search():
+    """Semantic search across stored datasets."""
+    query = request.args.get('q', '').strip()
+    if not query:
+        return jsonify(error='Query parameter q required'), 400
+    results = vector_service.search_datasets(app.config, query, limit=10)
+    return jsonify(results=results)
+
+
+@app.route('/api/memory/recent')
+def api_memory_recent():
+    """List recently uploaded datasets."""
+    results = vector_service.list_recent(app.config, limit=20)
+    return jsonify(results=results)
+
+
+# ---------------------------------------------------------------------------
+# Plugin API
+# ---------------------------------------------------------------------------
+
+@app.route('/api/plugins')
+def api_plugins_list():
+    """List all registered plugins."""
+    return jsonify(
+        plugins=plugin_service.get_plugins(),
+        hook_types=plugin_service.get_hook_types(),
+    )
+
+
+@app.route('/api/plugins/<name>/toggle', methods=['POST'])
+def api_plugins_toggle(name):
+    """Enable or disable a plugin."""
+    plugins = {p['name']: p for p in plugin_service.get_plugins()}
+    if name not in plugins:
+        return jsonify(error='Plugin not found'), 404
+    plugin = plugin_service._plugins[name]
+    plugin.enabled = not plugin.enabled
+    return jsonify(name=name, enabled=plugin.enabled)
+
+
+# ---------------------------------------------------------------------------
+# Collaboration API (REST endpoints, always available)
+# ---------------------------------------------------------------------------
+
+@app.route('/api/collab/create', methods=['POST'])
+def api_collab_create():
+    """Create a new collaboration room."""
+    data = request.get_json() or {}
+    name = data.get('name', 'Anonymous')
+    room_id = collab_service.create_room(creator_name=name)
+    return jsonify(room_id=room_id, websocket=HAS_SOCKETIO)
+
+
+@app.route('/api/collab/<room_id>/info')
+def api_collab_info(room_id):
+    """Get room info and participants."""
+    if not collab_service.room_exists(room_id):
+        return jsonify(error='Room not found'), 404
+    participants = collab_service.get_participants(room_id)
+    return jsonify(room_id=room_id, participants=participants, websocket=HAS_SOCKETIO)
+
+
+# ---------------------------------------------------------------------------
+# WebSocket events (only if flask-socketio is installed)
+# ---------------------------------------------------------------------------
+
+socketio = None
+if HAS_SOCKETIO:
+    socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading')
+
+    @socketio.on('join')
+    def on_join(data):
+        room_id = data.get('room')
+        name = data.get('name', 'Anonymous')
+        if not room_id:
+            return
+
+        # Auto-create room if needed
+        if not collab_service.room_exists(room_id):
+            collab_service.create_room(creator_name=name)
+
+        participant = collab_service.join_room(room_id, request.sid, name)
+        if not participant:
+            return
+
+        sio_join(room_id)
+        emit('user_joined', {
+            'name': name,
+            'color': participant.color,
+            'participants': collab_service.get_participants(room_id),
+        }, to=room_id)
+
+    @socketio.on('leave')
+    def on_leave(data):
+        room_id = data.get('room')
+        if not room_id:
+            return
+        collab_service.leave_room(room_id, request.sid)
+        sio_leave(room_id)
+        emit('user_left', {
+            'sid': request.sid,
+            'participants': collab_service.get_participants(room_id),
+        }, to=room_id)
+
+    @socketio.on('disconnect')
+    def on_disconnect():
+        # Clean up from all rooms
+        for room_id in list(collab_service._rooms.keys()):
+            room = collab_service.get_room(room_id)
+            if room and request.sid in room.participants:
+                collab_service.leave_room(room_id, request.sid)
+                emit('user_left', {
+                    'sid': request.sid,
+                    'participants': collab_service.get_participants(room_id),
+                }, to=room_id)
+
+    @socketio.on('cursor_move')
+    def on_cursor_move(data):
+        """Broadcast cursor position to other users in the room."""
+        room_id = data.get('room')
+        if not room_id:
+            return
+        emit('cursor_update', {
+            'sid': request.sid,
+            'tab': data.get('tab'),
+            'x': data.get('x'),
+            'y': data.get('y'),
+        }, to=room_id, include_self=False)
+
+    @socketio.on('tab_change')
+    def on_tab_change(data):
+        """Notify room when someone changes tabs."""
+        room_id = data.get('room')
+        if not room_id:
+            return
+        emit('tab_changed', {
+            'sid': request.sid,
+            'tab': data.get('tab'),
+        }, to=room_id, include_self=False)
+
+    @socketio.on('chart_shared')
+    def on_chart_shared(data):
+        """Share a chart configuration with the room."""
+        room_id = data.get('room')
+        if not room_id:
+            return
+        emit('chart_received', {
+            'sid': request.sid,
+            'chart': data.get('chart'),
+        }, to=room_id, include_self=False)
+
+    @socketio.on('chat_message')
+    def on_chat_message(data):
+        """Broadcast a chat message to the room."""
+        room_id = data.get('room')
+        if not room_id:
+            return
+        room = collab_service.get_room(room_id)
+        participant = room.participants.get(request.sid) if room else None
+        emit('chat_broadcast', {
+            'sid': request.sid,
+            'name': participant.name if participant else 'Anonymous',
+            'color': participant.color if participant else '#666',
+            'message': data.get('message', ''),
+        }, to=room_id)
+
+
+# ---------------------------------------------------------------------------
 # Run
 # ---------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    if socketio:
+        socketio.run(app, debug=True, port=5000)
+    else:
+        app.run(debug=True, port=5000)

@@ -266,6 +266,115 @@ class TestDashboards:
         assert resp.status_code == 404
 
 
+class TestVectorMemory:
+    def test_memory_status_without_oracle(self, client):
+        resp = client.get('/api/memory/status')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['available'] is False  # No Oracle configured in test
+
+    def test_memory_search_without_oracle(self, client):
+        resp = client.get('/api/memory/search?q=sales+data')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['results'] == []
+
+    def test_memory_recent_without_oracle(self, client):
+        resp = client.get('/api/memory/recent')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['results'] == []
+
+    def test_memory_search_requires_query(self, client):
+        resp = client.get('/api/memory/search')
+        assert resp.status_code == 400
+
+
+class TestCollaboration:
+    def test_create_room(self, client):
+        resp = client.post('/api/collab/create',
+            json={'name': 'Alice'}, content_type='application/json')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert 'room_id' in data
+        assert len(data['room_id']) == 8
+
+    def test_room_info(self, client):
+        # Create a room first
+        resp = client.post('/api/collab/create',
+            json={'name': 'Alice'}, content_type='application/json')
+        room_id = resp.get_json()['room_id']
+
+        # Get info
+        resp = client.get(f'/api/collab/{room_id}/info')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['room_id'] == room_id
+
+    def test_room_not_found(self, client):
+        resp = client.get('/api/collab/nonexistent/info')
+        assert resp.status_code == 404
+
+
+class TestCollabService:
+    def test_room_lifecycle(self):
+        from services.collab_service import create_room, join_room, leave_room, get_participants, room_exists
+        room_id = create_room('Alice')
+        assert room_exists(room_id)
+
+        p = join_room(room_id, 'sid1', 'Alice')
+        assert p is not None
+        assert p.name == 'Alice'
+
+        participants = get_participants(room_id)
+        assert len(participants) == 1
+
+        leave_room(room_id, 'sid1')
+        # Room auto-cleans when empty
+        assert not room_exists(room_id)
+
+
+class TestPlugins:
+    def test_list_plugins(self, client):
+        resp = client.get('/api/plugins')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert 'plugins' in data
+        assert 'hook_types' in data
+        assert isinstance(data['plugins'], list)
+
+    def test_plugin_service_registration(self):
+        from services.plugin_service import Plugin, register_plugin, unregister_plugin, get_plugins, run_hooks
+
+        def my_insight(df):
+            return [{'type': 'test', 'title': 'Test insight'}]
+
+        plugin = Plugin(
+            name='test-plugin',
+            version='0.1.0',
+            hooks={'insight_generator': my_insight},
+        )
+        assert register_plugin(plugin)
+        assert any(p['name'] == 'test-plugin' for p in get_plugins())
+
+        # Run the hook
+        import pandas as pd
+        results = run_hooks('insight_generator', pd.DataFrame({'a': [1, 2]}))
+        assert len(results) >= 1
+        test_result = [r for r in results if r['plugin'] == 'test-plugin']
+        assert len(test_result) == 1
+        assert test_result[0]['result'][0]['title'] == 'Test insight'
+
+        # Cleanup
+        unregister_plugin('test-plugin')
+        assert not any(p['name'] == 'test-plugin' for p in get_plugins())
+
+    def test_example_plugin_loads(self):
+        from services.plugin_service import get_plugins
+        names = [p['name'] for p in get_plugins()]
+        assert 'data-quality' in names
+
+
 class TestPIIService:
     def test_detect_pii_with_emails(self, tmp_path):
         from services.csv_service import parse_csv, detect_pii

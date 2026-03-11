@@ -432,6 +432,7 @@
         Builder.init(allColumns);
         SQLPanel.init(allColumns);
         Dashboards.init(allColumns);
+        Collab.init();
     }
 
     init();

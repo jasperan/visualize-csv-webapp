@@ -4,6 +4,37 @@
 {% block nav_extra %}
 <span class="text-sm text-gray-500 dark:text-gray-400 truncate max-w-[200px]" title="{{ filename }}">{{ filename }}</span>
 <a href="/" class="text-sm text-brand-600 hover:underline">New file</a>
+
+<!-- Collaboration controls -->
+<div class="relative group">
+    <button id="collab-toggle-btn" class="flex items-center gap-1 text-xs px-2 py-1 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        Collaborate
+    </button>
+    <div id="collab-dropdown" class="hidden absolute right-0 top-full mt-1 w-72 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-3 space-y-3 z-50">
+        <div id="collab-join-section">
+            <div class="flex gap-2">
+                <input id="collab-room-input" type="text" placeholder="Room ID"
+                    class="flex-1 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-2 py-1.5">
+                <button id="collab-join" class="text-xs bg-brand-600 text-white px-3 py-1.5 rounded-lg hover:bg-brand-700">Join</button>
+            </div>
+            <button id="collab-create" class="w-full mt-2 text-xs border border-brand-600 text-brand-600 px-3 py-1.5 rounded-lg hover:bg-brand-50 dark:hover:bg-brand-900/20">
+                Create New Room
+            </button>
+        </div>
+        <div id="collab-active-section" style="display: none;">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-medium">Room: <code id="collab-room-display" class="bg-gray-100 dark:bg-gray-800 px-1 rounded"></code></span>
+                <div class="flex gap-1">
+                    <button id="collab-share-link" class="text-xs text-brand-600 hover:underline">Copy link</button>
+                    <button id="collab-leave" class="text-xs text-red-500 hover:underline">Leave</button>
+                </div>
+            </div>
+            <div id="collab-participants" class="flex flex-wrap gap-1"></div>
+        </div>
+        <div id="collab-notices"></div>
+    </div>
+</div>
 {% endblock %}
 
 {% block body %}
@@ -285,5 +316,17 @@
 <script src="{{ url_for('static', filename='js/builder.js') }}"></script>
 <script src="{{ url_for('static', filename='js/sql.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dashboards.js') }}"></script>
+<script src="{{ url_for('static', filename='js/collab.js') }}"></script>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script>
+    // Collab dropdown toggle
+    document.getElementById('collab-toggle-btn')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.getElementById('collab-dropdown')?.classList.toggle('hidden');
+    });
+    document.addEventListener('click', () => {
+        document.getElementById('collab-dropdown')?.classList.add('hidden');
+    });
+    document.getElementById('collab-dropdown')?.addEventListener('click', (e) => e.stopPropagation());
+</script>
 {% endblock %}

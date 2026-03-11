@@ -12,3 +12,9 @@ class Config:
     DASHBOARD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dashboards')
     OLLAMA_BASE_URL = os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')
     OLLAMA_MODEL = os.environ.get('OLLAMA_MODEL', 'qwen3.5:latest')
+    EMBEDDING_MODEL = os.environ.get('EMBEDDING_MODEL', 'nomic-embed-text')
+    PLUGINS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'plugins')
+    # Oracle AI Vector Search (optional — set ORACLE_DSN to enable)
+    ORACLE_DSN = os.environ.get('ORACLE_DSN')  # e.g. 'localhost:1521/FREEPDB1'
+    ORACLE_USER = os.environ.get('ORACLE_USER', 'csvviz')
+    ORACLE_PASSWORD = os.environ.get('ORACLE_PASSWORD', '')

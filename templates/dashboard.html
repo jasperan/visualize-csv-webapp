@@ -29,6 +29,8 @@
                 <button class="tab-btn px-5 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" data-tab="charts">Charts</button>
                 <button class="tab-btn px-5 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" data-tab="stats">Statistics</button>
                 <button class="tab-btn px-5 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" data-tab="builder">Chart Builder</button>
+                <button class="tab-btn px-5 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" data-tab="sql">SQL Query</button>
+                <button class="tab-btn px-5 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" data-tab="dashboards">Dashboards</button>
                 <div class="flex-1"></div>
                 <button id="sidebar-toggle" class="lg:hidden px-3 text-gray-500 hover:text-gray-700">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
@@ -87,6 +89,39 @@
             <div id="panel-stats" class="tab-panel hidden">
                 <div id="stats-container" class="overflow-x-auto">
                     <div class="text-center py-8 text-gray-400">Loading statistics...</div>
+                </div>
+            </div>
+
+            <!-- SQL Query panel -->
+            <div id="panel-sql" class="tab-panel hidden">
+                <div class="space-y-4">
+                    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
+                                <h3 class="font-semibold text-sm">SQL Query Engine</h3>
+                                <span class="text-xs text-gray-400">Powered by DuckDB-WASM (runs in your browser)</span>
+                            </div>
+                            <span id="sql-status" class="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500">not loaded</span>
+                        </div>
+
+                        <div id="sql-examples" class="flex flex-wrap gap-2 mb-3"></div>
+
+                        <textarea id="sql-editor" rows="4" spellcheck="false"
+                            class="w-full font-mono text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-4 py-3 focus:outline-none focus:border-brand-500 resize-y"
+                            placeholder="SELECT * FROM data LIMIT 20">SELECT * FROM data LIMIT 20</textarea>
+
+                        <div class="flex items-center justify-between mt-2">
+                            <span class="text-xs text-gray-400">Table name: <code class="bg-gray-100 dark:bg-gray-800 px-1 rounded">data</code> &middot; Ctrl+Enter to run</span>
+                            <button id="sql-run" class="bg-brand-600 text-white px-4 py-2 rounded-lg hover:bg-brand-700 transition-colors text-sm font-medium">
+                                Run (Ctrl+Enter)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="sql-result" class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 min-h-[200px]">
+                        <p class="text-gray-400 text-sm text-center py-8">Run a query to see results. DuckDB loads on first use.</p>
+                    </div>
                 </div>
             </div>
 
@@ -153,6 +188,9 @@
                         <button id="builder-render" class="w-full bg-brand-600 text-white px-4 py-2 rounded-lg hover:bg-brand-700 transition-colors text-sm font-medium">
                             Render Chart
                         </button>
+                        <button id="dash-add-widget" class="w-full border border-brand-600 text-brand-600 px-4 py-2 rounded-lg hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors text-sm font-medium">
+                            + Add to Dashboard
+                        </button>
                     </div>
 
                     <!-- Preview -->
@@ -160,6 +198,41 @@
                         <div id="builder-preview" class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 min-h-[450px] flex items-center justify-center text-gray-400 text-sm">
                             Select columns and click "Render Chart" to preview.
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboards panel -->
+            <div id="panel-dashboards" class="tab-panel hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                    <!-- Sidebar: saved dashboards + controls -->
+                    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 space-y-4">
+                        <h3 class="font-semibold text-sm">My Dashboards</h3>
+                        <div id="dash-list" class="space-y-1 max-h-[200px] overflow-y-auto">
+                            <p class="text-xs text-gray-400 text-center py-2">Loading...</p>
+                        </div>
+
+                        <hr class="border-gray-200 dark:border-gray-700">
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Dashboard Name</label>
+                            <input id="dash-name" type="text" placeholder="My Dashboard"
+                                class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm">
+                        </div>
+
+                        <div class="flex gap-2">
+                            <button id="dash-save" class="flex-1 bg-brand-600 text-white px-3 py-2 rounded-lg hover:bg-brand-700 text-sm font-medium">Save</button>
+                            <button id="dash-new" class="flex-1 border border-gray-300 dark:border-gray-600 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-sm">New</button>
+                        </div>
+
+                        <div id="dash-notifications"></div>
+
+                        <p class="text-xs text-gray-400">Tip: Configure charts in the Chart Builder tab, then click "Add to Dashboard" to build your layout.</p>
+                    </div>
+
+                    <!-- Widget grid -->
+                    <div id="dash-widgets" class="lg:col-span-3 grid grid-cols-1 xl:grid-cols-2 gap-4">
+                        <p class="text-gray-400 text-sm text-center py-8 col-span-full">No widgets yet. Use the Chart Builder tab to configure a chart, then click "Add to Dashboard".</p>
                     </div>
                 </div>
             </div>
@@ -210,5 +283,7 @@
 <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
 <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 <script src="{{ url_for('static', filename='js/builder.js') }}"></script>
+<script src="{{ url_for('static', filename='js/sql.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboards.js') }}"></script>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 {% endblock %}

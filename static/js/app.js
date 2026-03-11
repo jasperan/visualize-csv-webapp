@@ -125,55 +125,58 @@
     }
 
     // -----------------------------------------------------------------------
-    // Insights
+    // Insights (renders from pre-fetched data)
     // -----------------------------------------------------------------------
-    async function loadInsights() {
+    function renderInsights(insights) {
         const container = document.getElementById('insights-container');
+
+        const iconMap = {
+            'table': '<path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/>',
+            'alert-triangle': '<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+            'zap': '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+            'trending-up': '<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
+            'trending-down': '<polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>',
+            'bar-chart-2': '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+            'hash': '<line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/>',
+            'copy': '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>',
+        };
+
+        const severityColors = {
+            warning: 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950',
+            success: 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950',
+            info: 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900',
+        };
+
+        container.innerHTML = '';
+
+        insights.forEach(insight => {
+            const card = document.createElement('div');
+            card.className = `insight-card rounded-xl border p-4 ${severityColors[insight.severity] || severityColors.info}`;
+            card.innerHTML = `
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 shrink-0 mt-0.5 ${insight.severity === 'warning' ? 'text-amber-500' : insight.severity === 'success' ? 'text-green-500' : 'text-gray-400'}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        ${iconMap[insight.icon] || iconMap['table']}
+                    </svg>
+                    <div>
+                        <p class="font-semibold text-sm">${escapeHtml(insight.title)}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${escapeHtml(insight.detail)}</p>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    // Legacy loader (fallback if async analysis not used)
+    async function loadInsights() {
         try {
             const resp = await fetch('/api/insights');
             const data = await resp.json();
-            if (data.error) { container.innerHTML = `<p class="text-red-500">${data.error}</p>`; return; }
-
-            container.innerHTML = '';
-
-            // Also check for PII in parallel
-            loadPII(container);
-
-            const iconMap = {
-                'table': '<path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/>',
-                'alert-triangle': '<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
-                'zap': '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
-                'trending-up': '<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
-                'trending-down': '<polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>',
-                'bar-chart-2': '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
-                'hash': '<line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/>',
-                'copy': '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>',
-            };
-
-            const severityColors = {
-                warning: 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950',
-                success: 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950',
-                info: 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900',
-            };
-
-            data.insights.forEach(insight => {
-                const card = document.createElement('div');
-                card.className = `insight-card rounded-xl border p-4 ${severityColors[insight.severity] || severityColors.info}`;
-                card.innerHTML = `
-                    <div class="flex items-start gap-3">
-                        <svg class="w-5 h-5 shrink-0 mt-0.5 ${insight.severity === 'warning' ? 'text-amber-500' : insight.severity === 'success' ? 'text-green-500' : 'text-gray-400'}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            ${iconMap[insight.icon] || iconMap['table']}
-                        </svg>
-                        <div>
-                            <p class="font-semibold text-sm">${escapeHtml(insight.title)}</p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${escapeHtml(insight.detail)}</p>
-                        </div>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
+            if (data.error) return;
+            renderInsights(data.insights || []);
+            loadPII(document.getElementById('insights-container'));
         } catch (err) {
-            container.innerHTML = `<p class="text-red-500">Failed to load insights: ${err.message}</p>`;
+            document.getElementById('insights-container').innerHTML = `<p class="text-red-500">Failed to load insights: ${err.message}</p>`;
         }
     }
 
@@ -270,61 +273,120 @@
     }
 
     // -----------------------------------------------------------------------
-    // Charts
+    // Charts (renders from pre-fetched data)
     // -----------------------------------------------------------------------
-    async function loadCharts() {
+    function renderChartsData(charts) {
         const container = document.getElementById('charts-container');
+        container.innerHTML = '';
+        if (charts.length === 0) {
+            container.innerHTML = '<p class="text-gray-400 text-center py-8">No charts could be auto-generated for this dataset. Try the AI chat to request specific visualizations.</p>';
+            return;
+        }
+        charts.forEach(chart => Charts.render(container, chart));
+    }
+
+    async function loadCharts() {
         try {
             const resp = await fetch('/api/charts');
             const data = await resp.json();
-            if (data.error) { container.innerHTML = `<p class="text-red-500">${data.error}</p>`; return; }
-
-            container.innerHTML = '';
-            data.charts.forEach(chart => Charts.render(container, chart));
-
-            if (data.charts.length === 0) {
-                container.innerHTML = '<p class="text-gray-400 text-center py-8">No charts could be auto-generated for this dataset. Try the AI chat to request specific visualizations.</p>';
-            }
+            if (!data.error) renderChartsData(data.charts || []);
         } catch (err) {
-            container.innerHTML = `<p class="text-red-500">Failed to load charts: ${err.message}</p>`;
+            document.getElementById('charts-container').innerHTML = `<p class="text-red-500">Failed to load charts: ${err.message}</p>`;
         }
     }
 
     // -----------------------------------------------------------------------
-    // Statistics
+    // Statistics (renders from pre-fetched data)
     // -----------------------------------------------------------------------
-    async function loadStats() {
+    function renderStatsData(stats) {
         const container = document.getElementById('stats-container');
+        let html = '<table class="text-sm w-full"><thead><tr class="bg-gray-100 dark:bg-gray-800">';
+        html += '<th class="px-3 py-2 text-left">Column</th><th class="px-3 py-2 text-left">Type</th>';
+        html += '<th class="px-3 py-2 text-right">Count</th><th class="px-3 py-2 text-right">Mean</th>';
+        html += '<th class="px-3 py-2 text-right">Std</th><th class="px-3 py-2 text-right">Min</th>';
+        html += '<th class="px-3 py-2 text-right">Median</th><th class="px-3 py-2 text-right">Max</th>';
+        html += '<th class="px-3 py-2 text-right">Unique</th>';
+        html += '</tr></thead><tbody>';
+
+        Object.values(stats).forEach(s => {
+            html += `<tr class="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">`;
+            html += `<td class="px-3 py-2 font-medium">${escapeHtml(s.name)}</td>`;
+            html += `<td class="px-3 py-2 text-gray-500">${escapeHtml(s.dtype)}</td>`;
+            html += `<td class="px-3 py-2 text-right">${s.count}</td>`;
+            html += `<td class="px-3 py-2 text-right">${s.mean != null ? s.mean : '-'}</td>`;
+            html += `<td class="px-3 py-2 text-right">${s.std != null ? s.std : '-'}</td>`;
+            html += `<td class="px-3 py-2 text-right">${s.min != null ? s.min : '-'}</td>`;
+            html += `<td class="px-3 py-2 text-right">${s.median != null ? s.median : '-'}</td>`;
+            html += `<td class="px-3 py-2 text-right">${s.max != null ? s.max : '-'}</td>`;
+            html += `<td class="px-3 py-2 text-right">${s.unique != null ? s.unique : '-'}</td>`;
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    async function loadStats() {
         try {
             const resp = await fetch('/api/stats');
             const data = await resp.json();
-            if (data.error) { container.innerHTML = `<p class="text-red-500">${data.error}</p>`; return; }
-
-            let html = '<table class="text-sm w-full"><thead><tr class="bg-gray-100 dark:bg-gray-800">';
-            html += '<th class="px-3 py-2 text-left">Column</th><th class="px-3 py-2 text-left">Type</th>';
-            html += '<th class="px-3 py-2 text-right">Count</th><th class="px-3 py-2 text-right">Mean</th>';
-            html += '<th class="px-3 py-2 text-right">Std</th><th class="px-3 py-2 text-right">Min</th>';
-            html += '<th class="px-3 py-2 text-right">Median</th><th class="px-3 py-2 text-right">Max</th>';
-            html += '<th class="px-3 py-2 text-right">Unique</th>';
-            html += '</tr></thead><tbody>';
-
-            Object.values(data.stats).forEach(s => {
-                html += `<tr class="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">`;
-                html += `<td class="px-3 py-2 font-medium">${escapeHtml(s.name)}</td>`;
-                html += `<td class="px-3 py-2 text-gray-500">${escapeHtml(s.dtype)}</td>`;
-                html += `<td class="px-3 py-2 text-right">${s.count}</td>`;
-                html += `<td class="px-3 py-2 text-right">${s.mean != null ? s.mean : '-'}</td>`;
-                html += `<td class="px-3 py-2 text-right">${s.std != null ? s.std : '-'}</td>`;
-                html += `<td class="px-3 py-2 text-right">${s.min != null ? s.min : '-'}</td>`;
-                html += `<td class="px-3 py-2 text-right">${s.median != null ? s.median : '-'}</td>`;
-                html += `<td class="px-3 py-2 text-right">${s.max != null ? s.max : '-'}</td>`;
-                html += `<td class="px-3 py-2 text-right">${s.unique != null ? s.unique : '-'}</td>`;
-                html += '</tr>';
-            });
-            html += '</tbody></table>';
-            container.innerHTML = html;
+            if (!data.error) renderStatsData(data.stats || {});
         } catch (err) {
-            container.innerHTML = `<p class="text-red-500">Failed to load statistics: ${err.message}</p>`;
+            document.getElementById('stats-container').innerHTML = `<p class="text-red-500">Failed to load statistics: ${err.message}</p>`;
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Background analysis polling
+    // -----------------------------------------------------------------------
+    const renderedTasks = new Set();
+
+    async function startBackgroundAnalysis() {
+        try {
+            await fetch('/api/analysis/start', { method: 'POST' });
+            pollAnalysis();
+        } catch (err) {
+            // Fall back to synchronous loading
+            console.warn('Background analysis unavailable, falling back:', err);
+            await Promise.all([loadInsights(), loadCharts(), loadStats()]);
+        }
+    }
+
+    async function pollAnalysis() {
+        const maxPolls = 60; // 30s max
+        for (let i = 0; i < maxPolls; i++) {
+            try {
+                const resp = await fetch('/api/analysis/status');
+                const status = await resp.json();
+
+                // Render completed tasks progressively
+                if (status.insights?.status === 'done' && !renderedTasks.has('insights')) {
+                    renderInsights(status.insights.result || []);
+                    renderedTasks.add('insights');
+                }
+                if (status.charts?.status === 'done' && !renderedTasks.has('charts')) {
+                    renderChartsData(status.charts.result || []);
+                    renderedTasks.add('charts');
+                }
+                if (status.stats?.status === 'done' && !renderedTasks.has('stats')) {
+                    renderStatsData(status.stats.result || {});
+                    renderedTasks.add('stats');
+                }
+                if (status.pii?.status === 'done' && !renderedTasks.has('pii')) {
+                    const piiData = status.pii.result || {};
+                    if (piiData.has_pii) {
+                        loadPII(document.getElementById('insights-container'));
+                    }
+                    renderedTasks.add('pii');
+                }
+
+                // Check if all done
+                const allDone = Object.values(status).every(t => t.status === 'done' || t.status === 'error');
+                if (allDone) break;
+            } catch (err) {
+                console.error('Poll error:', err);
+                break;
+            }
+            await new Promise(r => setTimeout(r, 500));
         }
     }
 
@@ -360,18 +422,16 @@
             console.error('Column info error:', err);
         }
 
-        // Load everything in parallel
-        await Promise.all([
-            loadInsights(),
-            loadTable(1),
-            loadCharts(),
-            loadStats(),
-        ]);
+        // Load table immediately, analysis in background
+        loadTable(1);
+        startBackgroundAnalysis();
 
         // Init modules
         Chat.init();
         initNarrative();
         Builder.init(allColumns);
+        SQLPanel.init(allColumns);
+        Dashboards.init(allColumns);
     }
 
     init();

@@ -1,21 +1,25 @@
 import glob
+import json
 import logging
 import os
 import uuid
+from datetime import datetime, timezone
 
 import pandas as pd
 from flask import (Flask, request, render_template, session,
-                   redirect, url_for, jsonify)
+                   redirect, url_for, jsonify, send_file)
 from werkzeug.utils import secure_filename
 
 from config import Config
 from services import csv_service, llm_service
+from services.async_analysis import start_analysis, get_all_status, clear_session
 
 app = Flask(__name__)
 app.config.from_object(Config)
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['DASHBOARD_FOLDER'], exist_ok=True)
 
 if app.config['SECRET_KEY'] != os.environ.get('SECRET_KEY'):
     logging.warning(
@@ -274,6 +278,15 @@ def api_builder_data():
     return jsonify(result)
 
 
+@app.route('/api/csv/raw')
+def api_csv_raw():
+    """Serve the raw CSV file for client-side processing (DuckDB-WASM)."""
+    path = get_upload_path()
+    if not path:
+        return jsonify(error='No file uploaded'), 404
+    return send_file(path, mimetype='text/csv')
+
+
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
     data = request.get_json()
@@ -299,6 +312,148 @@ def api_chat():
 def api_ollama_status():
     status = llm_service.check_ollama_health(app.config['OLLAMA_BASE_URL'])
     return jsonify(status)
+
+
+# ---------------------------------------------------------------------------
+# Background Analysis API
+# ---------------------------------------------------------------------------
+
+def _session_key():
+    """Return a stable key for this session's analysis tasks."""
+    return session.get('upload_path', '')
+
+
+@app.route('/api/analysis/start', methods=['POST'])
+def api_analysis_start():
+    """Kick off background analysis tasks. Returns immediately."""
+    path = get_upload_path()
+    if not path:
+        return jsonify(error='No file uploaded'), 404
+
+    key = _session_key()
+    clear_session(key)  # Fresh analysis for each start
+
+    max_rows = app.config['MAX_PREVIEW_ROWS']
+
+    def run_insights():
+        df = csv_service.parse_csv(path, nrows=max_rows)
+        return csv_service.generate_insights(df)
+
+    def run_charts():
+        df = csv_service.parse_csv(path, nrows=max_rows)
+        col_info = csv_service.get_column_info(df)
+        return csv_service.suggest_charts(df, col_info)
+
+    def run_stats():
+        df = csv_service.parse_csv(path, nrows=max_rows)
+        return csv_service.get_summary_stats(df)
+
+    def run_pii():
+        df = csv_service.parse_csv(path, nrows=max_rows)
+        pii = csv_service.detect_pii(df)
+        return {'pii': pii, 'has_pii': len(pii) > 0}
+
+    start_analysis(key, 'insights', run_insights)
+    start_analysis(key, 'charts', run_charts)
+    start_analysis(key, 'stats', run_stats)
+    start_analysis(key, 'pii', run_pii)
+
+    return jsonify(success=True, tasks=['insights', 'charts', 'stats', 'pii'])
+
+
+@app.route('/api/analysis/status')
+def api_analysis_status():
+    """Poll for background analysis results."""
+    key = _session_key()
+    return jsonify(get_all_status(key))
+
+
+# ---------------------------------------------------------------------------
+# Dashboard Persistence API
+# ---------------------------------------------------------------------------
+
+def _dashboard_path(dash_id):
+    """Return safe path for a dashboard JSON file."""
+    safe_id = secure_filename(dash_id)
+    if not safe_id:
+        return None
+    path = os.path.join(app.config['DASHBOARD_FOLDER'], f'{safe_id}.json')
+    real_path = os.path.realpath(path)
+    real_folder = os.path.realpath(app.config['DASHBOARD_FOLDER'])
+    if not real_path.startswith(real_folder + os.sep):
+        return None
+    return path
+
+
+@app.route('/api/dashboards', methods=['GET'])
+def api_dashboards_list():
+    """List all saved dashboards."""
+    folder = app.config['DASHBOARD_FOLDER']
+    dashboards = []
+    for fname in sorted(os.listdir(folder)):
+        if not fname.endswith('.json'):
+            continue
+        try:
+            with open(os.path.join(folder, fname)) as f:
+                data = json.load(f)
+            dashboards.append({
+                'id': data.get('id', fname[:-5]),
+                'name': data.get('name', 'Untitled'),
+                'widget_count': len(data.get('widgets', [])),
+                'created_at': data.get('created_at'),
+                'updated_at': data.get('updated_at'),
+            })
+        except (json.JSONDecodeError, OSError):
+            continue
+    return jsonify(dashboards=dashboards)
+
+
+@app.route('/api/dashboards', methods=['POST'])
+def api_dashboards_save():
+    """Save a new or updated dashboard."""
+    spec = request.get_json()
+    if not spec or not spec.get('name'):
+        return jsonify(error='Dashboard name required'), 400
+
+    dash_id = spec.get('id') or uuid.uuid4().hex[:12]
+    now = datetime.now(timezone.utc).isoformat()
+
+    dashboard = {
+        'id': dash_id,
+        'name': spec['name'],
+        'widgets': spec.get('widgets', []),
+        'created_at': spec.get('created_at', now),
+        'updated_at': now,
+    }
+
+    path = _dashboard_path(dash_id)
+    if not path:
+        return jsonify(error='Invalid dashboard ID'), 400
+
+    with open(path, 'w') as f:
+        json.dump(dashboard, f, indent=2)
+
+    return jsonify(success=True, id=dash_id, dashboard=dashboard)
+
+
+@app.route('/api/dashboards/<dash_id>')
+def api_dashboards_get(dash_id):
+    """Load a saved dashboard."""
+    path = _dashboard_path(dash_id)
+    if not path or not os.path.isfile(path):
+        return jsonify(error='Dashboard not found'), 404
+    with open(path) as f:
+        return jsonify(json.load(f))
+
+
+@app.route('/api/dashboards/<dash_id>', methods=['DELETE'])
+def api_dashboards_delete(dash_id):
+    """Delete a saved dashboard."""
+    path = _dashboard_path(dash_id)
+    if not path or not os.path.isfile(path):
+        return jsonify(error='Dashboard not found'), 404
+    os.remove(path)
+    return jsonify(success=True)
 
 
 # ---------------------------------------------------------------------------

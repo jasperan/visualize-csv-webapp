@@ -155,6 +155,18 @@ class TestAPIPII:
         assert 'rows' in data
 
 
+class TestAPIRawCSV:
+    def test_raw_csv_returns_file(self, uploaded_client):
+        resp = uploaded_client.get('/api/csv/raw')
+        assert resp.status_code == 200
+        assert b'name,age,salary,department' in resp.data
+        assert b'Alice' in resp.data
+
+    def test_raw_csv_404_without_upload(self, client):
+        resp = client.get('/api/csv/raw')
+        assert resp.status_code == 404
+
+
 class TestAPIBuilder:
     def test_builder_data(self, uploaded_client):
         resp = uploaded_client.post('/api/builder/data',
@@ -178,6 +190,80 @@ class TestAPIBuilder:
         resp = uploaded_client.post('/api/builder/data',
             json={}, content_type='application/json')
         assert resp.status_code == 400
+
+
+class TestAsyncAnalysis:
+    def test_analysis_start_and_poll(self, uploaded_client):
+        import time
+        resp = uploaded_client.post('/api/analysis/start')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['success'] is True
+        assert 'insights' in data['tasks']
+
+        # Poll until done (should be fast with 10-row CSV)
+        for _ in range(20):
+            resp = uploaded_client.get('/api/analysis/status')
+            status = resp.get_json()
+            if all(t.get('status') == 'done' for t in status.values()):
+                break
+            time.sleep(0.1)
+
+        assert status['insights']['status'] == 'done'
+        assert status['charts']['status'] == 'done'
+        assert status['stats']['status'] == 'done'
+        assert status['pii']['status'] == 'done'
+        assert isinstance(status['insights']['result'], list)
+
+    def test_analysis_404_without_upload(self, client):
+        resp = client.post('/api/analysis/start')
+        assert resp.status_code == 404
+
+
+class TestDashboards:
+    def test_create_and_list_dashboard(self, client, tmp_path):
+        # Configure dashboard folder
+        client.application.config['DASHBOARD_FOLDER'] = str(tmp_path / 'dashboards')
+        import os
+        os.makedirs(client.application.config['DASHBOARD_FOLDER'], exist_ok=True)
+
+        resp = client.post('/api/dashboards',
+            json={'name': 'Test Dashboard', 'widgets': [{'chartType': 'bar', 'x': 'col1'}]},
+            content_type='application/json')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['success'] is True
+        dash_id = data['id']
+
+        # List
+        resp = client.get('/api/dashboards')
+        data = resp.get_json()
+        assert len(data['dashboards']) == 1
+        assert data['dashboards'][0]['name'] == 'Test Dashboard'
+
+        # Get
+        resp = client.get(f'/api/dashboards/{dash_id}')
+        data = resp.get_json()
+        assert data['name'] == 'Test Dashboard'
+        assert len(data['widgets']) == 1
+
+        # Delete
+        resp = client.delete(f'/api/dashboards/{dash_id}')
+        assert resp.status_code == 200
+        resp = client.get(f'/api/dashboards/{dash_id}')
+        assert resp.status_code == 404
+
+    def test_dashboard_requires_name(self, client):
+        resp = client.post('/api/dashboards',
+            json={}, content_type='application/json')
+        assert resp.status_code == 400
+
+    def test_dashboard_not_found(self, client, tmp_path):
+        client.application.config['DASHBOARD_FOLDER'] = str(tmp_path / 'dashboards')
+        import os
+        os.makedirs(client.application.config['DASHBOARD_FOLDER'], exist_ok=True)
+        resp = client.get('/api/dashboards/nonexistent')
+        assert resp.status_code == 404
 
 
 class TestPIIService:

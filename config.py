@@ -9,5 +9,6 @@ class Config:
     ALLOWED_EXTENSIONS = {'csv', 'tsv'}
     MAX_PREVIEW_ROWS = 500
     MAX_CHAT_ROWS = 2000
+    DASHBOARD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dashboards')
     OLLAMA_BASE_URL = os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')
     OLLAMA_MODEL = os.environ.get('OLLAMA_MODEL', 'qwen3.5:latest')

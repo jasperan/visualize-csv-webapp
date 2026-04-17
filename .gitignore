@@ -62,3 +62,14 @@ findings.md
 progress.md
 dogfood-output/
 .playwright-mcp/
+CLAUDE.md
+
+# Agent/skill directories (local only)
+.agents/
+.claude/
+.crush/
+.openhands/
+.serena/
+
+# Generated content
+content/

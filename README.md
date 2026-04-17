@@ -1,24 +1,24 @@
-# CSVViz — Instant CSV Visualization & AI Analysis
+# CSVViz: Instant CSV Visualization & AI Analysis
 
 [![License: UPL](https://img.shields.io/badge/license-UPL-green)](https://img.shields.io/badge/license-UPL-green) [![Quality gate](https://sonarcloud.io/api/project_badges/quality_gate?project=oracle-devrel_test)](https://sonarcloud.io/dashboard?id=oracle-devrel_test)
 
-Upload any CSV file and get **interactive charts**, **auto-detected insights**, and **AI-powered natural language analysis** — all in your browser.
+Upload any CSV file and get **interactive charts**, **auto-detected insights**, and **AI-powered natural language analysis**, all in your browser.
 
 ## Features
 
 - **Drag-and-drop upload** with progress indicator and file validation
-- **Auto-generated Plotly charts** — histograms, scatter plots, bar charts, box plots, time series, and correlation heatmaps selected automatically based on your data's column types
-- **Smart insight cards** — outliers (IQR), strong correlations, skewed distributions, missing data patterns, duplicates, and high-cardinality warnings detected on upload
-- **Interactive data table** — sortable columns, pagination, and a column picker sidebar to show/hide fields
-- **"Chat with your CSV"** — ask natural language questions about your data (powered by Ollama); the AI writes and executes Pandas code, returning answers, tables, and charts
-- **Dark mode** — automatic system preference detection with manual toggle
-- **Summary statistics** — per-column count, mean, std, min, median, max, and unique values
-- **REST API** — all data, insights, charts, and stats available as JSON endpoints
+- **Auto-generated Plotly charts** (histograms, scatter plots, bar charts, box plots, time series, and correlation heatmaps) selected automatically based on your data's column types
+- **Smart insight cards**: outliers (IQR), strong correlations, skewed distributions, missing data patterns, duplicates, and high-cardinality warnings detected on upload
+- **Interactive data table**: sortable columns, pagination, and a column picker sidebar to show/hide fields
+- **"Chat with your CSV"**: ask natural language questions about your data (powered by Ollama). The AI writes and executes Pandas code, returning answers, tables, and charts
+- **Dark mode**: automatic system preference detection with manual toggle
+- **Summary statistics**: per-column count, mean, std, min, median, max, and unique values
+- **REST API**: all data, insights, charts, and stats available as JSON endpoints
 
 ## Quick Start
 
 <!-- one-command-install -->
-> **One-command install** — clone, configure, and run in a single step:
+> **One-command install** (clone, configure, and run in a single step):
 >
 > ```bash
 > curl -fsSL https://raw.githubusercontent.com/jasperan/visualize-csv-webapp/main/install.sh | bash
@@ -105,4 +105,4 @@ Licensed under the Universal Permissive License (UPL), Version 1.0.
 
 See [LICENSE](LICENSE) for more details.
 
-ORACLE AND ITS AFFILIATES DO NOT PROVIDE ANY WARRANTY WHATSOEVER, EXPRESS OR IMPLIED, FOR ANY SOFTWARE, MATERIAL OR CONTENT OF ANY KIND CONTAINED OR PRODUCED WITHIN THIS REPOSITORY, AND IN PARTICULAR SPECIFICALLY DISCLAIM ANY AND ALL IMPLIED WARRANTIES OF TITLE, NON-INFRINGEMENT, MERCHANTABILITY, AND FITNESS FOR A PARTICULAR PURPOSE. FURTHERMORE, ORACLE AND ITS AFFILIATES DO NOT REPRESENT THAT ANY CUSTOMARY SECURITY REVIEW HAS BEEN PERFORMED WITH RESPECT TO ANY SOFTWARE, MATERIAL OR CONTENT CONTAINED OR PRODUCED WITHIN THIS REPOSITORY. IN ADDITION, AND WITHOUT LIMITING THE FOREGOING, THIRD PARTIES MAY HAVE POSTED SOFTWARE, MATERIAL OR CONTENT TO THIS REPOSITORY WITHOUT ANY REVIEW. USE AT YOUR OWN RISK.
+ORACLE AND ITS AFFILIATES DO NOT PROVIDE ANY WARRANTY WHATSOEVER, EXPRESS OR IMPLIED, FOR ANY SOFTWARE, MATERIAL OR CONTENT OF ANY KIND CONTAINED OR PRODUCED WITHIN THIS REPOSITORY, AND IN PARTICULAR SPECIFICALLY DISCLAIM ANY AND ALL IMPLIED WARRANTIES OF TITLE, NON-INFRINGEMENT, MERCHANTABILITY, AND FITNESS FOR A PARTICULAR PURPOSE. ORACLE AND ITS AFFILIATES DO NOT REPRESENT THAT ANY CUSTOMARY SECURITY REVIEW HAS BEEN PERFORMED WITH RESPECT TO ANY SOFTWARE, MATERIAL OR CONTENT CONTAINED OR PRODUCED WITHIN THIS REPOSITORY. IN ADDITION, AND WITHOUT LIMITING THE FOREGOING, THIRD PARTIES MAY HAVE POSTED SOFTWARE, MATERIAL OR CONTENT TO THIS REPOSITORY WITHOUT ANY REVIEW. USE AT YOUR OWN RISK.

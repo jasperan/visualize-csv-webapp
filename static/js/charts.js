@@ -108,15 +108,15 @@ const Charts = {
         container.appendChild(div);
 
         const renderers = {
-            histogram: 'renderHistogram',
-            scatter: 'renderScatter',
-            bar: 'renderBar',
-            box: 'renderBox',
-            timeseries: 'renderTimeseries',
-            heatmap: 'renderHeatmap',
+            histogram: this.renderHistogram,
+            scatter: this.renderScatter,
+            bar: this.renderBar,
+            box: this.renderBox,
+            timeseries: this.renderTimeseries,
+            heatmap: this.renderHeatmap,
         };
-        const method = renderers[chart.type];
-        if (method) this[method](div, chart);
+        const renderer = renderers[chart.type];
+        if (renderer) renderer.call(this, div, chart);
     },
 
     renderDynamic(container, spec, df_data) {

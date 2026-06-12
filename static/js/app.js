@@ -176,7 +176,7 @@
             renderInsights(data.insights || []);
             loadPII(document.getElementById('insights-container'));
         } catch (err) {
-            document.getElementById('insights-container').innerHTML = `<p class="text-red-500">Failed to load insights: ${err.message}</p>`;
+            document.getElementById('insights-container').innerHTML = `<p class="text-red-500">Failed to load insights: ${escapeHtml(err.message)}</p>`;
         }
     }
 
@@ -291,7 +291,7 @@
             const data = await resp.json();
             if (!data.error) renderChartsData(data.charts || []);
         } catch (err) {
-            document.getElementById('charts-container').innerHTML = `<p class="text-red-500">Failed to load charts: ${err.message}</p>`;
+            document.getElementById('charts-container').innerHTML = `<p class="text-red-500">Failed to load charts: ${escapeHtml(err.message)}</p>`;
         }
     }
 
@@ -331,7 +331,7 @@
             const data = await resp.json();
             if (!data.error) renderStatsData(data.stats || {});
         } catch (err) {
-            document.getElementById('stats-container').innerHTML = `<p class="text-red-500">Failed to load statistics: ${err.message}</p>`;
+            document.getElementById('stats-container').innerHTML = `<p class="text-red-500">Failed to load statistics: ${escapeHtml(err.message)}</p>`;
         }
     }
 
@@ -388,15 +388,6 @@
             }
             await new Promise(r => setTimeout(r, 500));
         }
-    }
-
-    // -----------------------------------------------------------------------
-    // Helpers
-    // -----------------------------------------------------------------------
-    function escapeHtml(text) {
-        const el = document.createElement('span');
-        el.textContent = text;
-        return el.innerHTML;
     }
 
     // -----------------------------------------------------------------------

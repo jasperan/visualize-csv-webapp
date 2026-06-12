@@ -83,6 +83,24 @@ def unregister_plugin(name):
     return True
 
 
+def set_enabled(name, flag):
+    """Enable or disable a plugin. Returns the new state, or None if not found."""
+    plugin = _plugins.get(name)
+    if not plugin:
+        return None
+    plugin.enabled = bool(flag)
+    return plugin.enabled
+
+
+def toggle(name):
+    """Flip a plugin's enabled state. Returns the new state, or None if not found."""
+    plugin = _plugins.get(name)
+    if not plugin:
+        return None
+    plugin.enabled = not plugin.enabled
+    return plugin.enabled
+
+
 def get_plugins():
     """List all registered plugins."""
     return [
@@ -129,13 +147,8 @@ def run_hooks(hook_name, *args, **kwargs):
 def discover_entry_points():
     """Discover plugins via Python entry points (setuptools/pip installed)."""
     try:
-        if sys.version_info >= (3, 12):
-            from importlib.metadata import entry_points
-            eps = entry_points(group='csvviz.plugins')
-        else:
-            from importlib.metadata import entry_points
-            all_eps = entry_points()
-            eps = all_eps.get('csvviz.plugins', [])
+        from importlib.metadata import entry_points
+        eps = entry_points(group='csvviz.plugins')
 
         for ep in eps:
             try:

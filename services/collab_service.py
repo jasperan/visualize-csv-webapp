@@ -84,17 +84,20 @@ def get_participants(room_id):
     ]
 
 
-def update_shared_state(room_id, key, value, sender_sid=None):
-    """Update a piece of shared state and return the update payload."""
-    room = _rooms.get(room_id)
-    if not room:
-        return None
-    room.shared_state[key] = value
-    return {
-        'key': key,
-        'value': value,
-        'sender': sender_sid,
-    }
+def leave_all(sid):
+    """Remove a participant from every room they're in.
+
+    Returns the list of room_ids the participant was removed from, so the
+    caller can broadcast departures. Iterates a snapshot because leave_room
+    may delete rooms that become empty.
+    """
+    left = []
+    for room_id in list(_rooms.keys()):
+        room = _rooms.get(room_id)
+        if room and sid in room.participants:
+            leave_room(room_id, sid)
+            left.append(room_id)
+    return left
 
 
 def room_exists(room_id):

@@ -218,7 +218,7 @@ const Collab = {
         container.innerHTML = this.participants.map(p =>
             `<span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full" style="background: ${p.color}20; color: ${p.color}">
                 <span class="w-2 h-2 rounded-full" style="background: ${p.color}"></span>
-                ${this.escapeHtml(p.name)}
+                ${Util.escapeHtml(p.name)}
             </span>`
         ).join(' ');
     },
@@ -236,7 +236,7 @@ const Collab = {
         if (!container) return;
         const msg = document.createElement('div');
         msg.className = 'text-xs p-2 rounded bg-gray-50 dark:bg-gray-800';
-        msg.innerHTML = `<span class="font-medium" style="color: ${data.color}">${this.escapeHtml(data.name)}</span>: ${this.escapeHtml(data.message)}`;
+        msg.innerHTML = `<span class="font-medium" style="color: ${data.color}">${Util.escapeHtml(data.name)}</span>: ${Util.escapeHtml(data.message)}`;
         container.appendChild(msg);
         container.scrollTop = container.scrollHeight;
     },
@@ -245,17 +245,11 @@ const Collab = {
         const area = document.getElementById('collab-notices');
         if (!area) return;
         const colors = { success: 'text-green-600', warning: 'text-amber-600', error: 'text-red-600', info: 'text-brand-600' };
-        area.innerHTML = `<span class="text-xs ${colors[type] || colors.success}">${this.escapeHtml(msg)}</span>`;
+        area.innerHTML = `<span class="text-xs ${colors[type] || colors.success}">${Util.escapeHtml(msg)}</span>`;
         setTimeout(() => { if (area.textContent === msg) area.innerHTML = ''; }, 4000);
     },
 
     getUsername() {
         return localStorage.getItem('collab_name') || 'User ' + Math.floor(Math.random() * 1000);
-    },
-
-    escapeHtml(text) {
-        const el = document.createElement('span');
-        el.textContent = text;
-        return el.innerHTML;
     },
 };

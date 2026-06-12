@@ -44,9 +44,13 @@ Upload any CSV file and get **interactive charts**, **auto-detected insights**, 
 # Clone and install
 git clone https://github.com/jasperan/visualize-csv-webapp.git
 cd visualize-csv-webapp
-pip install -r requirements.txt
 
-# Run
+# With uv (recommended)
+uv sync
+uv run python app.py
+
+# Or with pip
+pip install -r requirements.txt
 python app.py
 ```
 
@@ -83,6 +87,10 @@ export OLLAMA_MODEL=qwen3.5:latest
 ## Running Tests
 
 ```bash
+# With uv (recommended)
+uv run --with pytest pytest tests/ -v
+
+# Or with pip
 pip install pytest
 pytest tests/ -v
 ```

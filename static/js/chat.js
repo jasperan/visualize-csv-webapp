@@ -80,7 +80,7 @@ const Chat = {
 
         this.busy = true;
         this.inputEl.value = '';
-        this.addMessage('user', this.escapeHtml(question));
+        this.addMessage('user', Util.escapeHtml(question));
 
         const thinkingEl = this.addMessage('assistant',
             '<div class="flex items-center gap-2"><svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg> Thinking...</div>'
@@ -95,14 +95,14 @@ const Chat = {
             const data = await resp.json();
             thinkingEl.remove();
 
-            let html = `<p>${this.escapeHtml(data.answer || 'No answer returned.')}</p>`;
+            let html = `<p>${Util.escapeHtml(data.answer || 'No answer returned.')}</p>`;
 
             if (data.computed) {
-                html += `<div class="mt-2 px-2 py-1 bg-brand-600/10 rounded text-xs font-mono">${this.escapeHtml(data.computed)}</div>`;
+                html += `<div class="mt-2 px-2 py-1 bg-brand-600/10 rounded text-xs font-mono">${Util.escapeHtml(data.computed)}</div>`;
             }
 
             if (data.code) {
-                html += `<details class="mt-2"><summary class="text-xs text-gray-400 cursor-pointer">Show code</summary><pre class="mt-1 text-xs bg-gray-100 dark:bg-gray-900 p-2 rounded overflow-x-auto">${this.escapeHtml(data.code)}</pre></details>`;
+                html += `<details class="mt-2"><summary class="text-xs text-gray-400 cursor-pointer">Show code</summary><pre class="mt-1 text-xs bg-gray-100 dark:bg-gray-900 p-2 rounded overflow-x-auto">${Util.escapeHtml(data.code)}</pre></details>`;
             }
 
             if (data.table) {
@@ -110,7 +110,7 @@ const Chat = {
             }
 
             if (data.exec_error) {
-                html += `<p class="mt-2 text-xs text-red-500">Execution error: ${this.escapeHtml(data.exec_error)}</p>`;
+                html += `<p class="mt-2 text-xs text-red-500">Execution error: ${Util.escapeHtml(data.exec_error)}</p>`;
             }
 
             const msgEl = this.addMessage('assistant', html);
@@ -121,7 +121,7 @@ const Chat = {
 
         } catch (err) {
             thinkingEl.remove();
-            this.addMessage('assistant', `<p class="text-red-500">Error: ${this.escapeHtml(err.message)}</p>`);
+            this.addMessage('assistant', `<p class="text-red-500">Error: ${Util.escapeHtml(err.message)}</p>`);
         }
 
         this.busy = false;
@@ -129,21 +129,15 @@ const Chat = {
 
     renderMiniTable(table) {
         let html = '<div class="mt-2 overflow-x-auto"><table class="text-xs w-full">';
-        html += '<thead><tr>' + table.columns.map(c => `<th class="px-2 py-1 text-left bg-gray-100 dark:bg-gray-800">${this.escapeHtml(String(c))}</th>`).join('') + '</tr></thead>';
+        html += '<thead><tr>' + table.columns.map(c => `<th class="px-2 py-1 text-left bg-gray-100 dark:bg-gray-800">${Util.escapeHtml(String(c))}</th>`).join('') + '</tr></thead>';
         html += '<tbody>';
         for (const row of table.rows.slice(0, 20)) {
-            html += '<tr>' + row.map(v => `<td class="px-2 py-1 border-t border-gray-200 dark:border-gray-700">${this.escapeHtml(String(v ?? ''))}</td>`).join('') + '</tr>';
+            html += '<tr>' + row.map(v => `<td class="px-2 py-1 border-t border-gray-200 dark:border-gray-700">${Util.escapeHtml(String(v ?? ''))}</td>`).join('') + '</tr>';
         }
         if (table.rows.length > 20) {
             html += `<tr><td colspan="${table.columns.length}" class="px-2 py-1 text-gray-400 text-center">...and ${table.rows.length - 20} more rows</td></tr>`;
         }
         html += '</tbody></table></div>';
         return html;
-    },
-
-    escapeHtml(text) {
-        const el = document.createElement('span');
-        el.textContent = text;
-        return el.innerHTML;
     }
 };

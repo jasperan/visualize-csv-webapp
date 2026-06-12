@@ -143,14 +143,16 @@ def generate_insights(df):
 
     # High cardinality warning
     for col in df.columns:
-        if df[col].dtype == 'object' and df[col].nunique() > 100:
-            insights.append({
-                'type': 'cardinality',
-                'icon': 'hash',
-                'title': f'High Cardinality: "{col}"',
-                'detail': f'{df[col].nunique()} unique values — likely an ID or free-text column',
-                'severity': 'info',
-            })
+        if df[col].dtype == 'object':
+            nunique = df[col].nunique()
+            if nunique > 100:
+                insights.append({
+                    'type': 'cardinality',
+                    'icon': 'hash',
+                    'title': f'High Cardinality: "{col}"',
+                    'detail': f'{nunique} unique values — likely an ID or free-text column',
+                    'severity': 'info',
+                })
 
     # Duplicate rows
     dup_count = df.duplicated().sum()
@@ -353,7 +355,7 @@ def redact_pii(df, columns_to_redact=None):
             pattern = _PII_PATTERNS.get(pii_type)
             replacement = _REDACT_MAP.get(pii_type, '***')
             if pattern:
-                df[col] = df[col].astype(str).apply(
-                    lambda v: pattern.sub(replacement, v) if pd.notna(v) else v
+                df[col] = df[col].map(
+                    lambda v: pattern.sub(replacement, v) if isinstance(v, str) else v
                 )
     return df

@@ -171,13 +171,11 @@ def store_dataset(config, filename, df, col_info, stats):
                 return existing[0].hex() if hasattr(existing[0], 'hex') else str(existing[0])
 
             # Insert
-            import oracledb
             cursor.execute("""
                 INSERT INTO dataset_memory
                     (filename, file_hash, row_count, col_count, columns_json, stats_json, description, embedding)
                 VALUES
                     (:fname, :fhash, :rows, :cols, :col_json, :stats_json, :descr, :emb)
-                RETURNING id INTO :out_id
             """, {
                 'fname': filename[:500],
                 'fhash': file_hash,
@@ -187,12 +185,9 @@ def store_dataset(config, filename, df, col_info, stats):
                 'stats_json': json.dumps(stats, default=str),
                 'descr': description[:4000],
                 'emb': embedding,
-                'out_id': cursor.var(oracledb.DB_TYPE_RAW),
             })
             conn.commit()
 
-            out_id = cursor.getbindnames()
-            result = cursor.fetchone()
             logger.info('Stored dataset %s in vector memory', filename)
             return file_hash[:12]  # Return short ID
     except Exception as e:

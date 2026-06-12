@@ -40,12 +40,12 @@ const Dashboards = {
 
             listEl.innerHTML = data.dashboards.map(d => `
                 <div class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 group">
-                    <button class="dash-load text-sm text-left flex-1 truncate hover:text-brand-600" data-id="${this.escapeAttr(d.id)}">
-                        ${this.escapeHtml(d.name)} <span class="text-xs text-gray-400">(${d.widget_count} widget${d.widget_count !== 1 ? 's' : ''})</span>
+                    <button class="dash-load text-sm text-left flex-1 truncate hover:text-brand-600" data-id="${Util.escapeAttr(d.id)}">
+                        ${Util.escapeHtml(d.name)} <span class="text-xs text-gray-400">(${d.widget_count} widget${d.widget_count !== 1 ? 's' : ''})</span>
                     </button>
                     <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button class="dash-share text-xs text-brand-600 hover:underline" data-id="${this.escapeAttr(d.id)}">Share</button>
-                        <button class="dash-delete text-xs text-red-500 hover:underline" data-id="${this.escapeAttr(d.id)}">Delete</button>
+                        <button class="dash-share text-xs text-brand-600 hover:underline" data-id="${Util.escapeAttr(d.id)}">Share</button>
+                        <button class="dash-delete text-xs text-red-500 hover:underline" data-id="${Util.escapeAttr(d.id)}">Delete</button>
                     </div>
                 </div>
             `).join('');
@@ -110,7 +110,7 @@ const Dashboards = {
         grid.innerHTML = this.widgets.map((w, i) => `
             <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
                 <div class="flex items-center justify-between px-3 py-2 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-                    <span class="text-xs font-medium truncate">${this.escapeHtml(w.title || this.autoTitle(w))}</span>
+                    <span class="text-xs font-medium truncate">${Util.escapeHtml(w.title || this.autoTitle(w))}</span>
                     <button class="dash-remove-widget text-xs text-red-500 hover:underline" data-idx="${i}">Remove</button>
                 </div>
                 <div class="p-2 min-h-[300px]" id="dash-widget-${w.id}"></div>
@@ -142,7 +142,7 @@ const Dashboards = {
             });
             const data = await resp.json();
             if (data.error) {
-                container.innerHTML = `<p class="text-red-500 text-sm p-4">${data.error}</p>`;
+                container.innerHTML = `<p class="text-red-500 text-sm p-4">${Util.escapeHtml(data.error)}</p>`;
                 return;
             }
 
@@ -249,15 +249,5 @@ const Dashboards = {
         area.innerHTML = '';
         area.appendChild(el);
         setTimeout(() => el.remove(), 3000);
-    },
-
-    escapeHtml(text) {
-        const el = document.createElement('span');
-        el.textContent = text;
-        return el.innerHTML;
-    },
-
-    escapeAttr(text) {
-        return String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     },
 };

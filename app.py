@@ -1,4 +1,3 @@
-import glob
 import json
 import logging
 import os
@@ -112,8 +111,8 @@ def upload():
     try:
         stats = csv_service.get_summary_stats(df)
         vector_service.store_dataset(app.config, safe_name, df, col_info, stats)
-    except Exception:
-        pass  # Vector search is optional
+    except Exception as e:
+        logging.warning('Vector memory store skipped: %s', e)  # Vector search is optional
 
     return jsonify(
         success=True,
@@ -527,12 +526,10 @@ def api_plugins_list():
 @app.route('/api/plugins/<name>/toggle', methods=['POST'])
 def api_plugins_toggle(name):
     """Enable or disable a plugin."""
-    plugins = {p['name']: p for p in plugin_service.get_plugins()}
-    if name not in plugins:
+    enabled = plugin_service.toggle(name)
+    if enabled is None:
         return jsonify(error='Plugin not found'), 404
-    plugin = plugin_service._plugins[name]
-    plugin.enabled = not plugin.enabled
-    return jsonify(name=name, enabled=plugin.enabled)
+    return jsonify(name=name, enabled=enabled)
 
 
 # ---------------------------------------------------------------------------
@@ -601,15 +598,12 @@ if HAS_SOCKETIO:
 
     @socketio.on('disconnect')
     def on_disconnect():
-        # Clean up from all rooms
-        for room_id in list(collab_service._rooms.keys()):
-            room = collab_service.get_room(room_id)
-            if room and request.sid in room.participants:
-                collab_service.leave_room(room_id, request.sid)
-                emit('user_left', {
-                    'sid': request.sid,
-                    'participants': collab_service.get_participants(room_id),
-                }, to=room_id)
+        # Clean up from all rooms the user was in
+        for room_id in collab_service.leave_all(request.sid):
+            emit('user_left', {
+                'sid': request.sid,
+                'participants': collab_service.get_participants(room_id),
+            }, to=room_id)
 
     @socketio.on('cursor_move')
     def on_cursor_move(data):

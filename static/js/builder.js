@@ -69,7 +69,7 @@ const Builder = {
             });
             const data = await resp.json();
             if (data.error) {
-                preview.innerHTML = `<p class="text-red-500">${data.error}</p>`;
+                preview.innerHTML = `<p class="text-red-500">${Util.escapeHtml(data.error)}</p>`;
                 return;
             }
 
@@ -78,7 +78,7 @@ const Builder = {
 
             this.renderChart(preview, chartType, data, autoTitle, xCol, yCol, colorCol);
         } catch (err) {
-            preview.innerHTML = `<p class="text-red-500">Error: ${err.message}</p>`;
+            preview.innerHTML = `<p class="text-red-500">Error: ${Util.escapeHtml(err.message)}</p>`;
         }
     },
 

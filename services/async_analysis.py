@@ -42,12 +42,17 @@ def _cleanup_old_sessions():
         del _sessions[key]
 
 
+def _get_or_create_session_locked(session_key):
+    """Return the session for a key, creating it if needed. Caller must hold _lock."""
+    if session_key not in _sessions:
+        _cleanup_old_sessions()
+        _sessions[session_key] = AnalysisSession()
+    return _sessions[session_key]
+
+
 def get_or_create_session(session_key):
     with _lock:
-        if session_key not in _sessions:
-            _cleanup_old_sessions()
-            _sessions[session_key] = AnalysisSession()
-        return _sessions[session_key]
+        return _get_or_create_session_locked(session_key)
 
 
 def clear_session(session_key):
@@ -57,16 +62,17 @@ def clear_session(session_key):
 
 def start_analysis(session_key, task_name, func, *args, **kwargs):
     """Launch a background analysis task. Returns immediately."""
-    session = get_or_create_session(session_key)
+    with _lock:
+        session = _get_or_create_session_locked(session_key)
 
-    # If already running or done, skip
-    if task_name in session.tasks:
-        existing = session.tasks[task_name]
-        if existing.status in ('running', 'done'):
-            return existing
+        # If already running or done, skip
+        if task_name in session.tasks:
+            existing = session.tasks[task_name]
+            if existing.status in ('running', 'done'):
+                return existing
 
-    task = AnalysisTask(name=task_name, status='running', started_at=time.time())
-    session.tasks[task_name] = task
+        task = AnalysisTask(name=task_name, status='running', started_at=time.time())
+        session.tasks[task_name] = task
 
     def runner():
         try:

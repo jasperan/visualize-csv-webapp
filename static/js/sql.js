@@ -34,14 +34,6 @@ const SQLPanel = {
                 editor.selectionStart = editor.selectionEnd = start + 2;
             }
         });
-
-        // Example query buttons
-        document.querySelectorAll('.sql-example').forEach(btn => {
-            btn.addEventListener('click', () => {
-                editor.value = btn.dataset.query;
-                this.runQuery();
-            });
-        });
     },
 
     populateExamples() {
@@ -178,7 +170,7 @@ const SQLPanel = {
             this.renderResult(columns, rows, elapsed);
         } catch (err) {
             const elapsed = ((performance.now() - start) / 1000).toFixed(3);
-            resultDiv.innerHTML = `<div class="text-red-500 text-sm"><p class="font-semibold">Query Error</p><pre class="mt-1 text-xs bg-red-50 dark:bg-red-950 p-2 rounded overflow-x-auto">${this.escapeHtml(err.message)}</pre><p class="text-xs text-gray-500 mt-2">${elapsed}s</p></div>`;
+            resultDiv.innerHTML = `<div class="text-red-500 text-sm"><p class="font-semibold">Query Error</p><pre class="mt-1 text-xs bg-red-50 dark:bg-red-950 p-2 rounded overflow-x-auto">${Util.escapeHtml(err.message)}</pre><p class="text-xs text-gray-500 mt-2">${elapsed}s</p></div>`;
         }
 
         runBtn.disabled = false;
@@ -199,15 +191,14 @@ const SQLPanel = {
         html += '<div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800 max-h-[400px] overflow-y-auto">';
         html += '<table class="text-xs w-full"><thead class="bg-gray-100 dark:bg-gray-800 sticky top-0"><tr>';
         columns.forEach(c => {
-            html += `<th class="px-3 py-2 text-left font-medium whitespace-nowrap">${this.escapeHtml(String(c))}</th>`;
+            html += `<th class="px-3 py-2 text-left font-medium whitespace-nowrap">${Util.escapeHtml(String(c))}</th>`;
         });
         html += '</tr></thead><tbody class="divide-y divide-gray-100 dark:divide-gray-800">';
 
         displayRows.forEach(row => {
             html += '<tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50">';
             row.forEach(v => {
-                const val = v != null ? String(v) : '<span class="text-gray-300">NULL</span>';
-                html += `<td class="px-3 py-1.5 whitespace-nowrap">${v != null ? this.escapeHtml(String(v)) : '<span class="text-gray-300 italic">NULL</span>'}</td>`;
+                html += `<td class="px-3 py-1.5 whitespace-nowrap">${v != null ? Util.escapeHtml(String(v)) : '<span class="text-gray-300 italic">NULL</span>'}</td>`;
             });
             html += '</tr>';
         });
@@ -236,11 +227,5 @@ const SQLPanel = {
         a.download = 'query_result.csv';
         a.click();
         URL.revokeObjectURL(url);
-    },
-
-    escapeHtml(text) {
-        const el = document.createElement('span');
-        el.textContent = text;
-        return el.innerHTML;
     }
 };

@@ -5,17 +5,21 @@ const Charts = {
     darkMode: document.documentElement.classList.contains('dark'),
 
     layout(overrides = {}) {
-        const bg = this.darkMode ? '#111827' : '#ffffff';
-        const fg = this.darkMode ? '#e5e7eb' : '#374151';
-        const grid = this.darkMode ? '#1f2937' : '#f3f4f6';
-        return Object.assign({
+        const theme = getComputedStyle(document.documentElement);
+        const bg = theme.getPropertyValue('--surface').trim();
+        const fg = theme.getPropertyValue('--ink').trim();
+        const grid = theme.getPropertyValue('--line').trim();
+        return {
             paper_bgcolor: bg,
             plot_bgcolor: bg,
-            font: { color: fg, size: 12 },
-            margin: { t: 40, r: 20, b: 50, l: 60 },
-            xaxis: { gridcolor: grid },
-            yaxis: { gridcolor: grid },
-        }, overrides);
+            font: { color: fg, size: 11, family: 'Segoe UI, sans-serif' },
+            colorway: ['#537a53', '#9baa6d', '#b59167', '#799698', '#bcb58e', '#8f7664'],
+            margin: { t: 72, r: 24, b: 76, l: 60 },
+            ...overrides,
+            title: { x: 0.06, xanchor: 'left', y: 0.9, yanchor: 'bottom', font: { size: 14 }, ...overrides.title },
+            xaxis: { gridcolor: grid, automargin: true, ...overrides.xaxis },
+            yaxis: { gridcolor: grid, automargin: true, ...overrides.yaxis },
+        };
     },
 
     config() {
@@ -26,7 +30,7 @@ const Charts = {
         Plotly.newPlot(container, [{
             x: chart.data,
             type: 'histogram',
-            marker: { color: '#3b82f6', line: { color: '#2563eb', width: 1 } },
+            marker: { color: '#537a53', line: { color: '#365c42', width: 1 } },
             opacity: 0.85,
         }], this.layout({ title: { text: chart.title }, xaxis: { title: chart.x } }), this.config());
     },
@@ -37,7 +41,7 @@ const Charts = {
             y: chart.data_y,
             mode: 'markers',
             type: 'scatter',
-            marker: { color: '#3b82f6', size: 5, opacity: 0.6 },
+            marker: { color: '#537a53', size: 5, opacity: 0.6 },
         }], this.layout({
             title: { text: chart.title },
             xaxis: { title: chart.x },
@@ -50,7 +54,7 @@ const Charts = {
             x: chart.x,
             y: chart.y,
             type: 'bar',
-            marker: { color: '#3b82f6' },
+            marker: { color: '#537a53' },
         }], this.layout({
             title: { text: chart.title },
             xaxis: { title: chart.x_label },
@@ -63,7 +67,7 @@ const Charts = {
             y: d.values,
             name: d.name,
             type: 'box',
-            marker: { color: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'][i % 6] },
+            marker: { color: ['#537a53', '#9baa6d', '#b59167', '#799698', '#bcb58e', '#8f7664'][i % 6] },
         }));
         Plotly.newPlot(container, traces, this.layout({ title: { text: chart.title }, showlegend: true }), this.config());
     },
@@ -74,8 +78,8 @@ const Charts = {
             y: chart.y,
             type: 'scatter',
             mode: 'lines+markers',
-            marker: { color: '#3b82f6', size: 3 },
-            line: { color: '#3b82f6', width: 2 },
+            marker: { color: '#537a53', size: 3 },
+            line: { color: '#537a53', width: 2 },
         }], this.layout({
             title: { text: chart.title },
             xaxis: { title: chart.x_label },
@@ -136,7 +140,7 @@ const Charts = {
                     x: spec.x, y: spec.y,
                     type: type === 'line' ? 'scatter' : type,
                     mode: type === 'line' ? 'lines+markers' : undefined,
-                    marker: { color: '#3b82f6' },
+                    marker: { color: '#537a53' },
                 }], this.layout({ title: { text: spec.title || '' } }), this.config());
             }
         } catch (e) {
@@ -146,6 +150,16 @@ const Charts = {
 
     updateTheme() {
         this.darkMode = document.documentElement.classList.contains('dark');
+        const theme = this.layout();
+        document.querySelectorAll('.js-plotly-plot').forEach(plot => {
+            Plotly.relayout(plot, {
+                paper_bgcolor: theme.paper_bgcolor,
+                plot_bgcolor: theme.plot_bgcolor,
+                'font.color': theme.font.color,
+                'xaxis.gridcolor': theme.xaxis.gridcolor,
+                'yaxis.gridcolor': theme.yaxis.gridcolor,
+            });
+        });
     }
 };
 

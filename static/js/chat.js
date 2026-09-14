@@ -31,12 +31,16 @@ const Chat = {
         const toggle = document.getElementById('chat-toggle');
         const sidebar = document.getElementById('chat-sidebar');
         if (toggle && sidebar) {
-            toggle.addEventListener('click', () => {
-                sidebar.classList.toggle('hidden');
-                sidebar.classList.toggle('fixed');
-                sidebar.classList.toggle('inset-0');
-                sidebar.classList.toggle('z-50');
-                sidebar.classList.toggle('w-full');
+            const setOpen = open => {
+                sidebar.classList.toggle('is-open', open);
+                toggle.setAttribute('aria-expanded', open);
+                if (open) this.inputEl.focus();
+                else toggle.focus();
+            };
+            toggle.addEventListener('click', () => setOpen(!sidebar.classList.contains('is-open')));
+            document.getElementById('chat-close')?.addEventListener('click', () => setOpen(false));
+            sidebar.addEventListener('keydown', event => {
+                if (event.key === 'Escape' && sidebar.classList.contains('is-open')) setOpen(false);
             });
         }
 

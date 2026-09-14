@@ -9,15 +9,19 @@
     const panels = document.querySelectorAll('.tab-panel');
 
     tabBtns.forEach(btn => {
+        btn.setAttribute('aria-pressed', btn.classList.contains('active'));
         btn.addEventListener('click', () => {
             tabBtns.forEach(b => {
+                b.setAttribute('aria-pressed', 'false');
                 b.classList.remove('active', 'border-brand-600', 'text-brand-600');
                 b.classList.add('border-transparent', 'text-gray-500');
             });
             btn.classList.add('active', 'border-brand-600', 'text-brand-600');
+            btn.setAttribute('aria-pressed', 'true');
             btn.classList.remove('border-transparent', 'text-gray-500');
             panels.forEach(p => p.classList.add('hidden'));
             document.getElementById('panel-' + btn.dataset.tab)?.classList.remove('hidden');
+            requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
         });
     });
 
@@ -27,7 +31,10 @@
     const sidebarToggle = document.getElementById('sidebar-toggle');
     const sidebar = document.getElementById('sidebar');
     if (sidebarToggle && sidebar) {
-        sidebarToggle.addEventListener('click', () => sidebar.classList.toggle('hidden'));
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('hidden');
+            sidebarToggle.setAttribute('aria-expanded', !sidebar.classList.contains('hidden'));
+        });
     }
 
     // -----------------------------------------------------------------------
@@ -51,8 +58,8 @@
             label.className = 'flex items-center gap-2 py-0.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 px-1 rounded';
             const typeColors = { numeric: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300', categorical: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300', temporal: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300', text: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' };
             label.innerHTML = `
-                <input type="checkbox" class="col-toggle rounded" data-col="${col.name}" ${visibleColumns.has(col.name) ? 'checked' : ''}>
-                <span class="truncate flex-1" title="${col.name}">${col.name}</span>
+                <input type="checkbox" class="col-toggle rounded" data-col="${Util.escapeAttr(col.name)}" ${visibleColumns.has(col.name) ? 'checked' : ''}>
+                <span class="truncate flex-1" title="${Util.escapeAttr(col.name)}">${escapeHtml(col.name)}</span>
                 <span class="text-[10px] px-1 rounded ${typeColors[col.col_type] || typeColors.text}">${col.col_type[0].toUpperCase()}</span>
             `;
             label.querySelector('input').addEventListener('change', e => {
@@ -78,18 +85,23 @@
             const data = await resp.json();
             if (data.error) return;
 
+            document.getElementById('dataset-summary').textContent = `${data.total_rows.toLocaleString()} preview rows · ${data.columns.length} columns · Ready to explore`;
+
             const cols = data.columns.filter(c => visibleColumns.has(c));
             const colIndices = cols.map(c => data.columns.indexOf(c));
 
             const thead = document.getElementById('table-head');
             thead.innerHTML = '<tr>' + cols.map(c =>
-                `<th class="px-3 py-2 font-medium whitespace-nowrap" data-col="${c}">
+                `<th class="px-3 py-2 font-medium whitespace-nowrap" tabindex="0" aria-sort="${sortCol === c ? (sortAsc ? 'ascending' : 'descending') : 'none'}" data-col="${Util.escapeAttr(c)}">
                     ${escapeHtml(c)}
                     <span class="text-[10px] ml-1">${sortCol === c ? (sortAsc ? '&#9650;' : '&#9660;') : ''}</span>
                 </th>`
             ).join('') + '</tr>';
 
             thead.querySelectorAll('th').forEach(th => {
+                th.addEventListener('keydown', event => {
+                    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); th.click(); }
+                });
                 th.addEventListener('click', () => {
                     const col = th.dataset.col;
                     if (sortCol === col) sortAsc = !sortAsc;
@@ -152,6 +164,7 @@
         insights.forEach(insight => {
             const card = document.createElement('div');
             card.className = `insight-card rounded-xl border p-4 ${severityColors[insight.severity] || severityColors.info}`;
+            card.dataset.severity = insight.severity;
             card.innerHTML = `
                 <div class="flex items-start gap-3">
                     <svg class="w-5 h-5 shrink-0 mt-0.5 ${insight.severity === 'warning' ? 'text-amber-500' : insight.severity === 'success' ? 'text-green-500' : 'text-gray-400'}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">

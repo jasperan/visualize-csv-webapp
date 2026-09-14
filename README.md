@@ -4,6 +4,25 @@
 
 Upload any CSV file and get **interactive charts**, **auto-detected insights**, and **AI-powered natural language analysis**, all in your browser.
 
+## A look around
+
+A warm, editorial workspace for exploring your data: a clearer upload flow, coordinated light and dark themes, and an analysis desk that adapts to smaller screens. Choose **Try a sample dataset** on the welcome page to explore the included [studio revenue CSV](static/sample.csv).
+
+![CSVViz welcome page with file upload and an illustrated sample dataset](docs/visuals/welcome-desktop.png)
+
+<details>
+<summary>Explore insights, build a chart, and take your data mobile</summary>
+
+![CSVViz analysis workspace with dataset columns, correlation insights, and the data assistant](docs/visuals/analysis-desktop.png)
+
+![Interactive chart builder displaying monthly revenue from the included sample CSV](docs/visuals/chart-builder.png)
+
+<img src="docs/visuals/analysis-mobile.png" width="360" alt="CSVViz mobile analysis workspace with scrollable views, dataset columns toggle, and data assistant launcher"/>
+
+</details>
+
+Screenshots use the included sample CSV and its locally computed analysis. The AI assistant is shown offline; no generated answers or live Ollama results are implied.
+
 ## Features
 
 - **Drag-and-drop upload** with progress indicator and file validation

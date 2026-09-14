@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}CSV Visualizer{% endblock %}</title>
+    <title>{% block title %}CSVViz — A clearer view of your data{% endblock %}</title>
+    <meta name="description" content="Turn CSV files into charts, insights, and a clearer understanding of your data. An open workspace for exploration.">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
     <script>
@@ -12,7 +14,8 @@
             theme: {
                 extend: {
                     colors: {
-                        brand: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 900: '#1e3a5f' },
+                        brand: { 50: '#eef3ec', 100: '#e0eadc', 200: '#c4d8bb', 500: '#537a53', 600: '#365c42', 700: '#294b33', 900: '#23372a' },
+                        gray: { 50: '#f7f7f2', 100: '#eeeee7', 200: '#dedfd3', 300: '#c5c8b8', 400: '#858b7b', 500: '#6a7161', 600: '#555d4c', 700: '#404938', 800: '#2c342a', 900: '#20271f', 950: '#181e18' },
                     }
                 }
             }
@@ -31,19 +34,22 @@
         table.data-table th:hover { background: #dbeafe; }
         .dark table.data-table th:hover { background: #1e3a5f; }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     {% block head %}{% endblock %}
 </head>
-<body class="h-full bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
+<body class="csv-app h-full bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
+    <a href="#main-content" class="skip-link">Skip to content</a>
     <!-- Top navigation -->
-    <nav class="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-800">
-        <div class="max-w-[1800px] mx-auto px-4 h-14 flex items-center justify-between">
-            <a href="/" class="flex items-center gap-2 font-bold text-lg">
-                <svg class="w-6 h-6 text-brand-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16l4-8 4 4 4-6"/></svg>
-                <span>CSV<span class="text-brand-600">Viz</span></span>
+    <nav class="csv-nav" aria-label="Main navigation">
+        <div class="csv-nav-inner">
+            <a href="/" class="csv-brand" aria-label="CSVViz home">
+                <span class="csv-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+                <span>csv<span class="brand-serif">viz</span><span class="brand-dot">.</span></span>
             </a>
-            <div class="flex items-center gap-3">
+            <span class="nav-description">A little curiosity. A clearer picture.</span>
+            <div class="csv-nav-actions">
                 {% block nav_extra %}{% endblock %}
-                <button id="theme-toggle" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800" title="Toggle dark mode">
+                <button id="theme-toggle" class="theme-toggle" title="Toggle dark mode" aria-label="Toggle dark mode" aria-pressed="false">
                     <svg id="icon-sun" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
                     <svg id="icon-moon" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>
                 </button>
@@ -60,8 +66,10 @@
         if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             html.classList.add('dark');
         }
+        toggle?.setAttribute('aria-pressed', html.classList.contains('dark'));
         toggle?.addEventListener('click', () => {
             html.classList.toggle('dark');
+            toggle.setAttribute('aria-pressed', html.classList.contains('dark'));
             localStorage.setItem('theme', html.classList.contains('dark') ? 'dark' : 'light');
             window.dispatchEvent(new Event('themechange'));
         });

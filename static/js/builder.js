@@ -100,12 +100,12 @@ const Builder = {
 
         switch (type) {
             case 'histogram':
-                traces = [{ x: data.x, type: 'histogram', marker: { color: '#3b82f6' }, opacity: 0.85 }];
+                traces = [{ x: data.x, type: 'histogram', marker: { color: '#537a53' }, opacity: 0.85 }];
                 layout.xaxis = { title: xCol };
                 break;
 
             case 'bar':
-                traces = [{ x: data.x, y: data.y, type: 'bar', marker: { color: '#3b82f6' } }];
+                traces = [{ x: data.x, y: data.y, type: 'bar', marker: { color: '#537a53' } }];
                 layout.xaxis = { title: xCol };
                 layout.yaxis = { title: yCol };
                 break;
@@ -124,24 +124,24 @@ const Builder = {
                         name, marker: { size: 6, opacity: 0.7 },
                     }));
                 } else {
-                    traces = [{ x: data.x, y: data.y, mode: 'markers', type: 'scatter', marker: { color: '#3b82f6', size: 6, opacity: 0.7 } }];
+                    traces = [{ x: data.x, y: data.y, mode: 'markers', type: 'scatter', marker: { color: '#537a53', size: 6, opacity: 0.7 } }];
                 }
                 layout.xaxis = { title: xCol };
                 layout.yaxis = { title: yCol };
                 break;
 
             case 'line':
-                traces = [{ x: data.x, y: data.y, type: 'scatter', mode: 'lines+markers', marker: { color: '#3b82f6', size: 4 }, line: { color: '#3b82f6', width: 2 } }];
+                traces = [{ x: data.x, y: data.y, type: 'scatter', mode: 'lines+markers', marker: { color: '#537a53', size: 4 }, line: { color: '#537a53', width: 2 } }];
                 layout.xaxis = { title: xCol };
                 layout.yaxis = { title: yCol };
                 break;
 
             case 'box':
-                traces = [{ y: data.y || data.x, type: 'box', marker: { color: '#3b82f6' }, name: yCol || xCol }];
+                traces = [{ y: data.y || data.x, type: 'box', marker: { color: '#537a53' }, name: yCol || xCol }];
                 break;
 
             case 'violin':
-                traces = [{ y: data.y || data.x, type: 'violin', marker: { color: '#3b82f6' }, name: yCol || xCol, box: { visible: true }, meanline: { visible: true } }];
+                traces = [{ y: data.y || data.x, type: 'violin', marker: { color: '#537a53' }, name: yCol || xCol, box: { visible: true }, meanline: { visible: true } }];
                 break;
 
             case 'pie':

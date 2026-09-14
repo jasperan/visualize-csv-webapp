@@ -38,10 +38,12 @@
 {% endblock %}
 
 {% block body %}
-<div class="flex h-[calc(100vh-3.5rem)]">
+<div class="csv-workspace">
     <!-- Left sidebar: column picker -->
-    <aside id="sidebar" class="w-56 shrink-0 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-y-auto hidden lg:block">
+    <aside id="sidebar" class="column-sidebar hidden lg:block" aria-label="Dataset columns">
         <div class="p-3">
+            <p class="workspace-overline">YOUR DATASET</p>
+            <h2 class="column-heading">The raw material.</h2>
             <h3 class="text-xs font-semibold uppercase text-gray-400 mb-2">Columns</h3>
             <div class="mb-2">
                 <button id="toggle-all-cols" class="text-xs text-brand-600 hover:underline">Toggle all</button>
@@ -51,10 +53,14 @@
     </aside>
 
     <!-- Main content area -->
-    <main class="flex-1 overflow-y-auto">
+    <main id="main-content" class="analysis-main" tabindex="-1">
+        <div class="dataset-heading">
+            <div><p class="workspace-overline">THE EXPLORATION DESK</p><h1>{{ filename }}</h1><p id="dataset-summary" role="status">Opening your dataset…</p></div>
+            <button id="sidebar-toggle" class="lg:hidden secondary-action" aria-label="Toggle dataset columns" aria-expanded="false" aria-controls="sidebar">Columns <span aria-hidden="true">☷</span></button>
+        </div>
         <!-- Tabs -->
-        <div class="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-800">
-            <div class="flex">
+        <div class="workspace-tabs">
+            <div class="flex" aria-label="Analysis views">
                 <button class="tab-btn active px-5 py-3 text-sm font-medium border-b-2 border-brand-600 text-brand-600" data-tab="insights">Insights</button>
                 <button class="tab-btn px-5 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" data-tab="table">Data Table</button>
                 <button class="tab-btn px-5 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" data-tab="charts">Charts</button>
@@ -63,14 +69,11 @@
                 <button class="tab-btn px-5 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" data-tab="sql">SQL Query</button>
                 <button class="tab-btn px-5 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" data-tab="dashboards">Dashboards</button>
                 <div class="flex-1"></div>
-                <button id="sidebar-toggle" class="lg:hidden px-3 text-gray-500 hover:text-gray-700">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-                </button>
             </div>
         </div>
 
         <!-- Tab panels -->
-        <div class="p-4 max-w-[1400px] mx-auto">
+        <div class="analysis-panels">
             <!-- Insights panel -->
             <div id="panel-insights" class="tab-panel">
                 <div id="insights-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -79,8 +82,6 @@
                         Analyzing your data...
                     </div>
                 </div>
-            </div>
-
             <!-- AI Narrative (below insight cards) -->
             <div id="narrative-section" class="mt-6 hidden">
                 <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
@@ -93,6 +94,7 @@
                         Click "Generate" to create an AI-written summary of your dataset.
                     </div>
                 </div>
+            </div>
             </div>
 
             <!-- Data table panel -->
@@ -138,7 +140,7 @@
 
                         <div id="sql-examples" class="flex flex-wrap gap-2 mb-3"></div>
 
-                        <textarea id="sql-editor" rows="4" spellcheck="false"
+                        <textarea id="sql-editor" rows="4" spellcheck="false" aria-label="SQL query"
                             class="w-full font-mono text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-4 py-3 focus:outline-none focus:border-brand-500 resize-y"
                             placeholder="SELECT * FROM data LIMIT 20">SELECT * FROM data LIMIT 20</textarea>
 
@@ -164,7 +166,7 @@
                         <h3 class="font-semibold text-sm">Build a Chart</h3>
 
                         <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Chart Type</label>
+                            <label for="builder-type" class="block text-xs font-medium text-gray-500 mb-1">Chart Type</label>
                             <select id="builder-type" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm">
                                 <option value="bar">Bar Chart</option>
                                 <option value="scatter">Scatter Plot</option>
@@ -178,28 +180,28 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">X Axis / Category</label>
+                            <label for="builder-x" class="block text-xs font-medium text-gray-500 mb-1">X Axis / Category</label>
                             <select id="builder-x" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm">
                                 <option value="">— Select column —</option>
                             </select>
                         </div>
 
                         <div id="builder-y-group">
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Y Axis / Value</label>
+                            <label for="builder-y" class="block text-xs font-medium text-gray-500 mb-1">Y Axis / Value</label>
                             <select id="builder-y" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm">
                                 <option value="">— Select column —</option>
                             </select>
                         </div>
 
                         <div id="builder-color-group">
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Color By (optional)</label>
+                            <label for="builder-color" class="block text-xs font-medium text-gray-500 mb-1">Color By (optional)</label>
                             <select id="builder-color" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm">
                                 <option value="">— None —</option>
                             </select>
                         </div>
 
                         <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Aggregation (for bar/line)</label>
+                            <label for="builder-agg" class="block text-xs font-medium text-gray-500 mb-1">Aggregation (for bar/line)</label>
                             <select id="builder-agg" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm">
                                 <option value="none">None (raw values)</option>
                                 <option value="mean">Mean</option>
@@ -212,7 +214,7 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Title</label>
+                            <label for="builder-title" class="block text-xs font-medium text-gray-500 mb-1">Title</label>
                             <input id="builder-title" type="text" placeholder="Auto-generated" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm">
                         </div>
 
@@ -271,32 +273,34 @@
     </main>
 
     <!-- Right sidebar: AI Chat -->
-    <aside id="chat-sidebar" class="w-80 shrink-0 border-l border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col hidden xl:flex">
+    <aside id="chat-sidebar" class="chat-sidebar hidden xl:flex" aria-label="Data assistant">
         <div class="p-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
                 <h3 class="font-semibold text-sm">Ask about your data</h3>
             </div>
             <span id="ollama-status" class="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500">checking...</span>
+            <button id="chat-close" class="xl:hidden chat-close" aria-label="Close data assistant">×</button>
         </div>
 
         <div id="chat-messages" class="flex-1 overflow-y-auto p-3 space-y-3">
             <div class="chat-msg text-sm text-gray-500 bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                Hi! I can answer questions about your CSV data. Try asking:
-                <ul class="mt-2 space-y-1 text-xs">
-                    <li class="cursor-pointer hover:text-brand-600 chat-suggestion">"What are the top 5 rows by [column]?"</li>
-                    <li class="cursor-pointer hover:text-brand-600 chat-suggestion">"Are there any correlations?"</li>
-                    <li class="cursor-pointer hover:text-brand-600 chat-suggestion">"Summarize this dataset"</li>
-                    <li class="cursor-pointer hover:text-brand-600 chat-suggestion">"Show me the distribution of [column]"</li>
-                </ul>
+                <span class="assistant-symbol" aria-hidden="true">✳</span>
+                <h2 class="assistant-title">A second pair<br>of eyes.</h2>
+                <p>Ask a question. Follow a hunch. Explore your data with a local AI assistant.</p>
+                <div class="chat-suggestions">
+                    <button type="button" class="chat-suggestion">Summarize this dataset</button>
+                    <button type="button" class="chat-suggestion">Are there any correlations?</button>
+                    <button type="button" class="chat-suggestion">What patterns stand out?</button>
+                </div>
             </div>
         </div>
 
         <div class="p-3 border-t border-gray-200 dark:border-gray-800">
             <form id="chat-form" class="flex gap-2">
-                <input id="chat-input" type="text" placeholder="Ask a question..."
+                <input id="chat-input" type="text" placeholder="Follow your curiosity…" aria-label="Question about your data"
                        class="flex-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm focus:outline-none focus:border-brand-500">
-                <button type="submit" class="bg-brand-600 text-white px-3 py-2 rounded-lg hover:bg-brand-700 transition-colors text-sm">
+                <button type="submit" aria-label="Send question" class="bg-brand-600 text-white px-3 py-2 rounded-lg hover:bg-brand-700 transition-colors text-sm">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </button>
             </form>
@@ -305,7 +309,7 @@
 </div>
 
 <!-- Chat toggle for small screens -->
-<button id="chat-toggle" class="xl:hidden fixed bottom-4 right-4 bg-brand-600 text-white p-3 rounded-full shadow-lg hover:bg-brand-700 z-50">
+<button id="chat-toggle" aria-label="Open data assistant" aria-expanded="false" aria-controls="chat-sidebar" class="xl:hidden fixed bottom-4 right-4 bg-brand-600 text-white p-3 rounded-full shadow-lg hover:bg-brand-700 z-50">
     <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
 </button>
 {% endblock %}
